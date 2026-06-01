@@ -1,6 +1,6 @@
 # ChurnGuard
 
-Customer churn prediction CLI and library with ML model comparison.
+Customer churn prediction CLI and library with ML model comparison, threshold optimization, and SHAP explainability.
 
 ## Features
 
@@ -8,6 +8,10 @@ Customer churn prediction CLI and library with ML model comparison.
 - **Feature engineering pipeline** with automatic preprocessing
 - **Multiple ML models**: Logistic Regression, Random Forest, Gradient Boosting
 - **Model evaluation & comparison** with rich metrics output
+- **Threshold optimization**: F1-optimal, Youden's J, cost-sensitive strategies
+- **SHAP explainability**: global feature importance and per-customer explanations
+- **Business impact analysis**: ROI, revenue saved, intervention cost modeling
+- **End-to-end pipeline**: data → features → training → threshold → explain → report
 - **Visualization** of feature importance, confusion matrices, and ROC curves
 - **Configurable** via YAML or CLI flags
 - **Extensible** model registry via entry points
@@ -32,6 +36,15 @@ pip install churnguard[viz]
 # Analyze a CSV dataset
 churnguard analyze data.csv --target churn --output results/
 
+# Run the full pipeline (training + threshold + explain + business impact)
+churnguard pipeline data.csv --target churn --optimize-threshold --explain
+
+# Find optimal decision threshold
+churnguard threshold data.csv --target churn --strategy cost_sensitive --cost-ratio 5.0
+
+# Explain model predictions with SHAP
+churnguard explain data.csv --target churn --customer-id 42 --top-n 10
+
 # Compare all models
 churnguard compare data.csv --target churn
 
@@ -45,27 +58,62 @@ churnguard score new_customers.csv --model results/best_model.joblib
 ### Python API
 
 ```python
-from churnguard.data import DataLoader
-from churnguard.features import FeatureEngineer
-from churnguard.models import ModelRegistry
-from churnguard.evaluation import ModelEvaluator
+from churnguard.pipeline import ChurnPipeline, PipelineConfig
+from churnguard.threshold import ThresholdOptimizer, CostMatrix
 
-# Load and prepare data
-loader = DataLoader("data.csv", target_column="churn")
-X_train, X_test, y_train, y_test = loader.split()
+# Run the full pipeline
+config = PipelineConfig(
+    target="churn",
+    models=["logistic", "random_forest", "gradient_boosting"],
+    optimize_threshold=True,
+    cost_matrix=CostMatrix(cost_fn=5.0, cost_fp=1.0),
+    explain=True,
+    revenue_per_customer=100.0,
+    intervention_cost=10.0,
+)
+pipeline = ChurnPipeline(config=config)
+result = pipeline.run("data.csv", target="churn")
 
-# Engineer features
-engineer = FeatureEngineer()
-X_train = engineer.fit_transform(X_train)
-X_test = engineer.transform(X_test)
+print(f"Best model: {result.best_model_name} (F1={result.best_result.f1:.4f})")
+print(f"Optimal threshold: {result.threshold_result.optimal_threshold:.4f}")
+```
 
-# Train and compare models
-registry = ModelRegistry()
-results = registry.compare_all(X_train, X_test, y_train, y_test)
+### Threshold Optimization
 
-# Get best model
-best = registry.get_best(results, metric="f1")
-print(f"Best model: {best.name} (F1: {best.f1:.4f})")
+```python
+from churnguard.threshold import ThresholdOptimizer, CostMatrix
+
+optimizer = ThresholdOptimizer()
+
+# F1-optimal threshold
+result = optimizer.optimize(y_true, y_proba, strategy="f1")
+
+# Youden's J statistic
+result = optimizer.optimize(y_true, y_proba, strategy="youden")
+
+# Cost-sensitive (asymmetric FN/FP costs)
+result = optimizer.optimize(
+    y_true, y_proba,
+    strategy="cost_sensitive",
+    cost_matrix=CostMatrix(cost_fn=5.0, cost_fp=1.0),
+)
+```
+
+### Explainability
+
+```python
+from churnguard.explainability import ChurnExplainer
+
+explainer = ChurnExplainer(model=trained_model)
+explainer.fit(X_train, feature_names=feature_names)
+
+# Global feature importance
+global_exp = explainer.explain_global(X_test)
+print(global_exp.feature_importance)
+
+# Per-customer explanation
+customer_exp = explainer.explain_customer(X_test, customer_index=0)
+print(customer_exp.feature_contribution)
 ```
 
 ## Configuration

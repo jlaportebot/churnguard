@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "churnguard"
-version = "0.1.0"
-description = "Customer churn prediction CLI and library with ML model comparison"
+version = "0.2.0"
+description = "Customer churn prediction CLI and library with ML model comparison, threshold optimization, and SHAP explainability"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
@@ -34,6 +34,7 @@ dependencies = [
     "joblib>=1.2",
     "rich>=13.0",
     "pyyaml>=6.0",
+    "shap>=0.42",
 ]
 
 [project.optional-dependencies]
