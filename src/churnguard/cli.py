@@ -292,3 +292,269 @@ def score(data_path: str, model: str, output: Optional[str], threshold: float) -
 
 if __name__ == "__main__":
     main()
+
+
+@main.command()
+@click.argument("data_path", type=click.Path(exists=True))
+@click.option("--target", "-t", help="Target column name.")
+@click.option("--output", "-o", type=click.Path(), help="Output directory.")
+@click.option("--models", "-m", multiple=True, help="Models to train.")
+@click.option("--optimize-threshold", is_flag=True, help="Optimize decision threshold.")
+@click.option("--cost-ratio", type=float, default=5.0, help="Cost of FN / cost of FP for threshold optimization.")
+@click.option("--explain", is_flag=True, help="Generate SHAP explanations.")
+@click.option("--revenue", type=float, default=100.0, help="Revenue per customer for business impact.")
+@click.option("--intervention-cost", type=float, default=10.0, help="Cost per intervention.")
+@click.option("--success-rate", type=float, default=0.3, help="Intervention success rate.")
+@click.option("--seed", type=int, default=42, help="Random seed.")
+@click.pass_context
+def pipeline(
+    ctx: click.Context,
+    data_path: str,
+    target: Optional[str],
+    output: Optional[str],
+    models: tuple[str, ...],
+    optimize_threshold: bool,
+    cost_ratio: float,
+    explain: bool,
+    revenue: float,
+    intervention_cost: float,
+    success_rate: float,
+    seed: int,
+) -> None:
+    """Run the full churn prediction pipeline.
+
+    End-to-end workflow: data → features → training → evaluation →
+    threshold optimization → explainability → business impact → report.
+    """
+    from churnguard.pipeline import ChurnPipeline, PipelineConfig
+    from churnguard.threshold import CostMatrix
+
+    output_dir = ensure_dir(output) if output else ensure_dir("./churnguard_output")
+
+    config = PipelineConfig(
+        target=target or "churn",
+        models=list(models) if models else ["logistic", "random_forest", "gradient_boosting"],
+        optimize_threshold=optimize_threshold,
+        cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0) if optimize_threshold else None,
+        explain=explain,
+        revenue_per_customer=revenue,
+        intervention_cost=intervention_cost,
+        intervention_success_rate=success_rate,
+        output_dir=str(output_dir),
+        random_state=seed,
+    )
+
+    console.print(Panel(f"[bold blue]ChurnGuard Pipeline v{__version__}[/bold blue]", title="End-to-End Churn Prediction"))
+
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), TimeElapsedColumn(), console=console) as progress:
+        task = progress.add_task("Running pipeline...", total=None)
+        pipe = ChurnPipeline(config=config)
+        result = pipe.run(data_path, target=target or "churn")
+        progress.update(task, description="[green]Pipeline complete[/green]")
+
+    # Display best model
+    console.print(f"\n  [bold green]Best model:[/bold green] {result.best_model_name} (F1={result.best_result.f1:.4f})")
+
+    # Display model comparison
+    table = Table(title="Model Results")
+    table.add_column("Model", style="bold")
+    table.add_column("F1", justify="right", style="green")
+    table.add_column("ROC AUC", justify="right")
+    table.add_column("Precision", justify="right")
+    table.add_column("Recall", justify="right")
+    for name, r in sorted(result.model_results.items(), key=lambda x: x[1].f1, reverse=True):
+        table.add_row(r.model_name, f"{r.f1:.4f}", f"{r.roc_auc:.4f}", f"{r.precision:.4f}", f"{r.recall:.4f}")
+    console.print(table)
+
+    # Threshold optimization results
+    if result.threshold_result:
+        tr = result.threshold_result
+        console.print(f"\n  [bold yellow]Optimal threshold:[/bold yellow] {tr.optimal_threshold:.4f} (strategy: {tr.strategy})")
+        console.print(f"  F1 at optimal: {tr.f1_at_threshold:.4f}")
+
+    # Business impact
+    if "business_impact" in result.run_info:
+        bi = result.run_info["business_impact"]
+        console.print(f"\n  [bold cyan]Business Impact:[/bold cyan]")
+        console.print(f"  Revenue saved: ${bi['revenue_saved']:,.0f}")
+        console.print(f"  Intervention cost: ${bi['intervention_cost']:,.0f}")
+        console.print(f"  Net value: ${bi['net_value']:,.0f}")
+        console.print(f"  ROI: {bi['roi_percent']:.1f}%")
+
+    # SHAP explanation summary
+    if result.global_explanation:
+        top5 = list(result.global_explanation.feature_importance.items())[:5]
+        console.print(f"\n  [bold magenta]Top 5 Features (SHAP):[/bold magenta]")
+        for feat, imp in top5:
+            console.print(f"  {feat}: {imp:.4f}")
+
+    console.print(f"\n  Elapsed: {result.elapsed_seconds:.1f}s")
+    console.print(f"  Report saved to [blue]{output_dir}[/blue]")
+
+
+@main.command()
+@click.argument("data_path", type=click.Path(exists=True))
+@click.option("--target", "-t", help="Target column name.")
+@click.option("--model", "-m", default="logistic", help="Model to train for threshold optimization.")
+@click.option("--strategy", type=click.Choice(["f1", "youden", "cost_sensitive"]), default="f1", help="Optimization strategy.")
+@click.option("--cost-ratio", type=float, default=5.0, help="Cost FN / Cost FP (for cost_sensitive strategy).")
+@click.option("--output", "-o", type=click.Path(), help="Output directory for threshold report.")
+@click.option("--seed", type=int, default=42, help="Random seed.")
+@click.pass_context
+def threshold(
+    ctx: click.Context,
+    data_path: str,
+    target: Optional[str],
+    model: str,
+    strategy: str,
+    cost_ratio: float,
+    output: Optional[str],
+    seed: int,
+) -> None:
+    """Find the optimal decision threshold for churn classification.
+
+    Trains a model and evaluates multiple threshold optimization strategies.
+    """
+    from churnguard.threshold import ThresholdOptimizer, CostMatrix, optimize_threshold
+
+    loader = DataLoader(data_path, target_column=target, random_state=seed)
+    X_train, X_test, y_train, y_test = loader.split()
+
+    engineer = FeatureEngineer()
+    X_train_tf = engineer.fit_transform(X_train)
+    X_test_tf = engineer.transform(X_test)
+
+    registry = ModelRegistry(models=[model], random_state=seed)
+    train_result = registry.train_and_evaluate(model, X_train_tf, X_test_tf, y_train, y_test)
+
+    console.print(f"\n  Model: [green]{train_result.model_name}[/green] (F1={train_result.f1:.4f})")
+
+    # Optimize threshold
+    optimizer = ThresholdOptimizer()
+    y_proba = train_result.y_proba
+
+    strategies = ["f1", "youden", "cost_sensitive"] if strategy == "f1" else [strategy]
+
+    table = Table(title="Threshold Optimization Results")
+    table.add_column("Strategy", style="bold")
+    table.add_column("Threshold", justify="right")
+    table.add_column("F1", justify="right", style="green")
+    table.add_column("Precision", justify="right")
+    table.add_column("Recall", justify="right")
+
+    for strat in strategies:
+        if strat == "cost_sensitive":
+            result = optimizer.optimize(y_test, y_proba, strategy=strat, cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0))
+        else:
+            result = optimizer.optimize(y_test, y_proba, strategy=strat)
+        table.add_row(
+            strat,
+            f"{result.optimal_threshold:.4f}",
+            f"{result.f1_at_threshold:.4f}",
+            f"{result.precision_at_threshold:.4f}",
+            f"{result.recall_at_threshold:.4f}",
+        )
+
+    console.print(table)
+
+    if output:
+        output_dir = ensure_dir(output)
+        report = {"model": model, "strategies": {}}
+        for strat in strategies:
+            if strat == "cost_sensitive":
+                result = optimizer.optimize(y_test, y_proba, strategy=strat, cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0))
+            else:
+                result = optimizer.optimize(y_test, y_proba, strategy=strat)
+            report["strategies"][strat] = {
+                "optimal_threshold": result.optimal_threshold,
+                "f1": result.f1_at_threshold,
+                "precision": result.precision_at_threshold,
+                "recall": result.recall_at_threshold,
+            }
+        (output_dir / "threshold_report.json").write_text(json.dumps(report, indent=2))
+        console.print(f"\n  Report saved to [blue]{output_dir / 'threshold_report.json'}[/blue]")
+
+
+@main.command()
+@click.argument("data_path", type=click.Path(exists=True))
+@click.option("--target", "-t", help="Target column name.")
+@click.option("--model", "-m", default="logistic", help="Model to explain.")
+@click.option("--customer-id", type=int, default=0, help="Index of customer to explain in detail.")
+@click.option("--top-n", type=int, default=10, help="Number of top features to display.")
+@click.option("--output", "-o", type=click.Path(), help="Output directory for explanation report.")
+@click.option("--seed", type=int, default=42, help="Random seed.")
+@click.pass_context
+def explain(
+    ctx: click.Context,
+    data_path: str,
+    target: Optional[str],
+    model: str,
+    customer_id: int,
+    top_n: int,
+    output: Optional[str],
+    seed: int,
+) -> None:
+    """Explain model predictions using SHAP values.
+
+    Shows global feature importance and per-customer explanations.
+    """
+    from churnguard.explainability import ChurnExplainer
+
+    loader = DataLoader(data_path, target_column=target, random_state=seed)
+    X_train, X_test, y_train, y_test = loader.split()
+
+    engineer = FeatureEngineer()
+    X_train_tf = engineer.fit_transform(X_train)
+    X_test_tf = engineer.transform(X_test)
+
+    registry = ModelRegistry(models=[model], random_state=seed)
+    registry.train_and_evaluate(model, X_train_tf, X_test_tf, y_train, y_test)
+
+    # Get the trained sklearn model
+    churn_model = registry.get_model(model)
+    inner_model = churn_model._model if hasattr(churn_model, "_model") else churn_model
+
+    console.print(f"\n  Computing SHAP explanations for [green]{churn_model.name}[/green]...")
+
+    explainer = ChurnExplainer(model=inner_model)
+    explainer.fit(X_train_tf, feature_names=list(X_train_tf.columns))
+
+    # Global explanation
+    global_exp = explainer.explain_global(X_test_tf.iloc[:100] if len(X_test_tf) > 100 else X_test_tf)
+
+    table = Table(title=f"Top {top_n} Features (SHAP)")
+    table.add_column("Feature", style="bold")
+    table.add_column("Importance", justify="right", style="green")
+    for feat, imp in list(global_exp.feature_importance.items())[:top_n]:
+        table.add_row(feat, f"{imp:.4f}")
+    console.print(table)
+
+    # Customer-level explanation
+    if customer_id < len(X_test_tf):
+        cust_exp = explainer.explain_customer(X_test_tf, customer_index=customer_id)
+        console.print(f"\n  [bold]Customer #{customer_id} explanation:[/bold]")
+        console.print(f"  Churn probability contribution: {cust_exp.base_value:.4f}")
+        cust_table = Table(title=f"Top features for Customer #{customer_id}")
+        cust_table.add_column("Feature", style="bold")
+        cust_table.add_column("SHAP value", justify="right")
+        cust_table.add_column("Direction", justify="right")
+        top_features = sorted(cust_exp.feature_contribution.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
+        for feat, val in top_features:
+            direction = "[red]↑ churn[/red]" if val > 0 else "[green]↓ churn[/green]"
+            cust_table.add_row(feat, f"{val:+.4f}", direction)
+        console.print(cust_table)
+
+    if output:
+        output_dir = ensure_dir(output)
+        report = {
+            "model": churn_model.name,
+            "global_importance": dict(list(global_exp.feature_importance.items())[:top_n]),
+        }
+        if customer_id < len(X_test_tf):
+            report["customer_explanation"] = {
+                "customer_index": customer_id,
+                "base_value": cust_exp.base_value,
+                "top_features": {k: v for k, v in top_features},
+            }
+        (output_dir / "explanation_report.json").write_text(json.dumps(report, indent=2))
+        console.print(f"\n  Report saved to [blue]{output_dir / 'explanation_report.json'}[/blue]")
