@@ -290,6 +290,249 @@ def score(data_path: str, model: str, output: Optional[str], threshold: float) -
         console.print(result_df[["churn_prediction"] + (["churn_probability"] if proba is not None else [])].to_string())
 
 
+@main.command()
+@click.argument("reference_path", type=click.Path(exists=True))
+@click.argument("current_path", type=click.Path(exists=True))
+@click.option("--target", "-t", default="churn", help="Target column name.")
+@click.option("--output", "-o", type=click.Path(), help="Output directory for monitoring report.")
+@click.option("--psi-threshold", type=float, default=0.10, help="PSI threshold for drift detection.")
+@click.option("--ks-alpha", type=float, default=0.05, help="Alpha level for KS test.")
+@click.option("--report/--no-report", default=True, help="Generate HTML report.")
+@click.option("--concept-drift/--no-concept-drift", default=False, help="Run concept drift detection (requires --model).")
+@click.option("--model", "-m", type=click.Path(exists=True), help="Path to saved model for concept drift detection.")
+@click.option("--alert-config", type=click.Path(), help="Path to alert configuration JSON.")
+@click.pass_context
+def monitor(
+    ctx: click.Context,
+    reference_path: str,
+    current_path: str,
+    target: str,
+    output: Optional[str],
+    psi_threshold: float,
+    ks_alpha: float,
+    report: bool,
+    concept_drift: bool,
+    model: Optional[str],
+    alert_config: Optional[str],
+) -> None:
+    """Monitor model performance and detect data drift.
+
+    Compare a REFERENCE dataset (training data) against a CURRENT dataset
+    (production data) to detect distribution shifts and performance degradation.
+
+    \b
+    Example:
+      churnguard monitor reference.csv current.csv --output monitoring_output/
+    """
+    from churnguard.monitoring import (
+        DataDriftDetector,
+        PerformanceMonitor,
+        AlertManager,
+        MonitoringReport,
+        MonitoringReportConfig,
+        ADWIN,
+        DDM,
+        EDDM,
+        DEFAULT_CHURN_ALERT_RULES,
+    )
+
+    output_dir = ensure_dir(output) if output else ensure_dir("./churnguard_monitoring")
+
+    console.print(Panel(f"[bold blue]ChurnGuard Monitoring v{__version__}[/bold blue]", title="Model Monitoring"))
+
+    # Load data
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+        task = progress.add_task("Loading datasets...", total=None)
+        reference_df = pd.read_csv(reference_path)
+        current_df = pd.read_csv(current_path)
+        progress.update(task, description=f"Reference: {len(reference_df)} rows | Current: {len(current_df)} rows")
+
+    # --- Data drift detection ---
+    console.print("\n[bold]📊 Data Drift Detection[/bold]")
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+        task = progress.add_task("Running drift tests...", total=None)
+        detector = DataDriftDetector(
+            psi_threshold=psi_threshold,
+            ks_alpha=ks_alpha,
+        )
+        drift_result = detector.detect(reference_df, current_df)
+        progress.update(task, description=f"Drift check complete: {drift_result.n_features_drifted}/{drift_result.n_features_tested} features drifted")
+
+    # Display drift summary
+    severity_color = {
+        "none": "green",
+        "low": "green",
+        "medium": "yellow",
+        "high": "red",
+        "critical": "bold red",
+    }
+    color = severity_color.get(drift_result.overall_severity.value, "white")
+    console.print(f"  Overall severity: [{color}]{drift_result.overall_severity.value.upper()}[/{color}]")
+    console.print(f"  Drift score: {drift_result.drift_score:.4f}")
+    console.print(f"  Features drifted: {drift_result.n_features_drifted}/{drift_result.n_features_tested}")
+
+    if drift_result.drifted_features():
+        table = Table(title="Drifted Features")
+        table.add_column("Feature", style="bold")
+        table.add_column("PSI", justify="right")
+        table.add_column("KS p-value", justify="right")
+        table.add_column("Severity", justify="center")
+
+        for psi_r in drift_result.psi_results:
+            if psi_r.severity.value != "none":
+                ks_p = next(
+                    (r.p_value for r in drift_result.ks_results if r.feature_name == psi_r.feature_name),
+                    None,
+                )
+                table.add_row(
+                    psi_r.feature_name,
+                    f"{psi_r.psi_value:.4f}",
+                    f"{ks_p:.4f}" if ks_p is not None else "N/A",
+                    psi_r.severity.value.upper(),
+                )
+
+        console.print(table)
+
+    # --- Performance monitoring (if target column exists) ---
+    perf_monitor = None
+    if target in current_df.columns and target in reference_df.columns:
+        console.print("\n[bold]📈 Performance Monitoring[/bold]")
+        import joblib
+
+        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+            task = progress.add_task("Evaluating performance...", total=None)
+
+            perf_monitor = PerformanceMonitor(model_name="churn_model")
+
+            # Split reference for baseline evaluation
+            from sklearn.model_selection import train_test_split
+            ref_X = reference_df.drop(columns=[target])
+            ref_y = reference_df[target]
+            cur_X = current_df.drop(columns=[target])
+            cur_y = current_df[target]
+
+            if model:
+                model_obj = joblib.load(model)
+                if hasattr(model_obj, "predict_proba"):
+                    ref_proba = model_obj.predict_proba(ref_X)[:, 1]
+                    cur_proba = model_obj.predict_proba(cur_X)[:, 1]
+                else:
+                    ref_proba = None
+                    cur_proba = None
+
+                ref_pred = model_obj.predict(ref_X)
+                cur_pred = model_obj.predict(cur_X)
+            else:
+                # Simple heuristic baseline: use reference mean as threshold
+                ref_mean = ref_y.mean()
+                ref_pred = (ref_X.mean(axis=1) > ref_mean).astype(int) if len(ref_X.columns) > 0 else np.zeros(len(ref_y), dtype=int)
+                cur_pred = (cur_X.mean(axis=1) > ref_mean).astype(int) if len(cur_X.columns) > 0 else np.zeros(len(cur_y), dtype=int)
+                ref_proba = None
+                cur_proba = None
+
+            # Baseline snapshot
+            baseline_snapshot = perf_monitor.evaluate(
+                y_true=ref_y.values,
+                y_pred=ref_pred,
+                y_proba=ref_proba,
+                timestamp="baseline",
+            )
+
+            # Current snapshot
+            current_snapshot = perf_monitor.evaluate(
+                y_true=cur_y.values,
+                y_pred=cur_pred,
+                y_proba=cur_proba,
+            )
+
+            progress.update(task, description=f"Baseline F1={baseline_snapshot.f1:.4f} | Current F1={current_snapshot.f1:.4f}")
+
+        console.print(f"  Baseline F1: [green]{baseline_snapshot.f1:.4f}[/green]")
+        console.print(f"  Current  F1: [{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]{current_snapshot.f1:.4f}[/{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]")
+
+        if perf_monitor.alerts:
+            console.print(f"\n  [yellow]⚠ {len(perf_monitor.alerts)} performance alert(s)[/yellow]")
+            for alert in perf_monitor.alerts:
+                console.print(f"    • {alert.summary()}")
+
+    # --- Concept drift detection (optional) ---
+    concept_drift_results = None
+    if concept_drift and model and target in current_df.columns:
+        console.print("\n[bold]🔄 Concept Drift Detection[/bold]")
+        import joblib
+
+        model_obj = joblib.load(model)
+        cur_X = current_df.drop(columns=[target])
+        cur_y = current_df[target]
+        predictions = model_obj.predict(cur_X)
+
+        adwin = ADWIN()
+        ddm = DDM()
+        eddm = EDDM()
+
+        adwin_results = adwin.update_batch(predictions, cur_y.values)
+        ddm_results = ddm.update_batch(predictions, cur_y.values)
+        eddm_results = eddm.update_batch(predictions, cur_y.values)
+
+        concept_drift_results = {
+            "ADWIN": adwin.detect(),
+            "DDM": ddm.detect(),
+            "EDDM": eddm.detect(),
+        }
+
+        for name, result in concept_drift_results.items():
+            console.print(f"  {result.summary()}")
+
+    # --- Alert management ---
+    alert_manager = AlertManager(rules=DEFAULT_CHURN_ALERT_RULES)
+    metrics_for_alerts = {"drift_score": drift_result.drift_score}
+
+    if perf_monitor and perf_monitor.snapshots:
+        latest = perf_monitor.snapshots[-1]
+        metrics_for_alerts.update({
+            "f1": latest.f1,
+            "roc_auc": latest.roc_auc,
+            "churn_rate": latest.churn_rate,
+        })
+
+    new_alerts = alert_manager.check(metrics_for_alerts)
+
+    if new_alerts:
+        console.print(f"\n[bold yellow]🔔 {len(new_alerts)} new alert(s)[/bold yellow]")
+        for alert in new_alerts:
+            console.print(f"  • {alert.summary()}")
+    else:
+        console.print(f"\n[green]✓ No new alerts[/green]")
+
+    # --- HTML report ---
+    if report:
+        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+            task = progress.add_task("Generating HTML report...", total=None)
+            report_gen = MonitoringReport(MonitoringReportConfig(
+                title=f"ChurnGuard Monitoring Report — {reference_path}",
+                include_concept_drift=concept_drift_results is not None,
+            ))
+            report_path = output_dir / "monitoring_report.html"
+            report_gen.generate(
+                drift_result=drift_result,
+                performance_monitor=perf_monitor,
+                alert_manager=alert_manager,
+                concept_drift_results=concept_drift_results,
+                output_path=report_path,
+            )
+            progress.update(task, description=f"Report saved to {report_path}")
+
+    # Save JSON results
+    import json as json_mod
+    results_json = {
+        "drift": drift_result.to_dict(),
+        "alerts": [a.to_dict() for a in new_alerts],
+    }
+    json_path = output_dir / "monitoring_results.json"
+    json_path.write_text(json_mod.dumps(results_json, indent=2, default=str))
+    console.print(f"\n Results saved to [blue]{output_dir}[/blue]")
+
+
 if __name__ == "__main__":
     main()
 
