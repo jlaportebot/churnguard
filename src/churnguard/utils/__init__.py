@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(level: str = "INFO", log_file: Optional[Path] = None) -> None:
+def setup_logging(level: str = "INFO", log_file: Path | None = None) -> None:
     """Configure logging for ChurnGuard.
 
     Parameters
@@ -122,7 +122,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
-def get_config(config_path: Optional[str | Path] = None) -> dict[str, Any]:
+def get_config(config_path: str | Path | None = None) -> dict[str, Any]:
     """Get the effective configuration by merging defaults with a user config.
 
     Parameters

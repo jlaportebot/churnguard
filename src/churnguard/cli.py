@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from typing import Optional
 
 import click
+import numpy as np
 import pandas as pd
 from rich.console import Console
 from rich.panel import Panel
@@ -39,7 +39,7 @@ def _version_option(ctx: click.Context, param: click.Parameter, value: bool) -> 
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging.")
 @click.option("--config", "-c", type=click.Path(), help="Path to YAML config file.")
 @click.pass_context
-def main(ctx: click.Context, version: bool, verbose: bool, config: Optional[str]) -> None:
+def main(ctx: click.Context, version: bool, verbose: bool, config: str | None) -> None:
     """ChurnGuard — Customer churn prediction CLI.
 
     Analyze customer data, train ML models, and predict churn risk.
@@ -69,8 +69,8 @@ def main(ctx: click.Context, version: bool, verbose: bool, config: Optional[str]
 def analyze(
     ctx: click.Context,
     data_path: str,
-    target: Optional[str],
-    output: Optional[str],
+    target: str | None,
+    output: str | None,
     models: tuple[str, ...],
     tune: bool,
     no_plots: bool,
@@ -187,7 +187,7 @@ def analyze(
         save_json=True,
     )
 
-    for name, result in results.items():
+    for _name, result in results.items():
         evaluator.evaluate_model(result, y_test)
 
     comparison = evaluator.compare_models(results, y_test)
@@ -206,8 +206,8 @@ def analyze(
 def compare(
     ctx: click.Context,
     data_path: str,
-    target: Optional[str],
-    output: Optional[str],
+    target: str | None,
+    output: str | None,
     cv_folds: int,
     seed: int,
 ) -> None:
@@ -290,7 +290,7 @@ def sample(output: str, rows: int, churn_rate: float, seed: int) -> None:
 @click.option(
     "--threshold", type=float, default=0.5, help="Probability threshold for churn classification."
 )
-def score(data_path: str, model: str, output: Optional[str], threshold: float) -> None:
+def score(data_path: str, model: str, output: str | None, threshold: float) -> None:
     """Score new customer data using a trained model.
 
     Loads a saved model and predicts churn probability for each customer.
@@ -337,11 +337,22 @@ def score(data_path: str, model: str, output: Optional[str], threshold: float) -
 @click.argument("current_path", type=click.Path(exists=True))
 @click.option("--target", "-t", default="churn", help="Target column name.")
 @click.option("--output", "-o", type=click.Path(), help="Output directory for monitoring report.")
-@click.option("--psi-threshold", type=float, default=0.10, help="PSI threshold for drift detection.")
+@click.option(
+    "--psi-threshold", type=float, default=0.10, help="PSI threshold for drift detection."
+)
 @click.option("--ks-alpha", type=float, default=0.05, help="Alpha level for KS test.")
 @click.option("--report/--no-report", default=True, help="Generate HTML report.")
-@click.option("--concept-drift/--no-concept-drift", default=False, help="Run concept drift detection (requires --model).")
-@click.option("--model", "-m", type=click.Path(exists=True), help="Path to saved model for concept drift detection.")
+@click.option(
+    "--concept-drift/--no-concept-drift",
+    default=False,
+    help="Run concept drift detection (requires --model).",
+)
+@click.option(
+    "--model",
+    "-m",
+    type=click.Path(exists=True),
+    help="Path to saved model for concept drift detection.",
+)
 @click.option("--alert-config", type=click.Path(), help="Path to alert configuration JSON.")
 @click.pass_context
 def monitor(
@@ -349,13 +360,13 @@ def monitor(
     reference_path: str,
     current_path: str,
     target: str,
-    output: Optional[str],
+    output: str | None,
     psi_threshold: float,
     ks_alpha: float,
     report: bool,
     concept_drift: bool,
-    model: Optional[str],
-    alert_config: Optional[str],
+    model: str | None,
+    alert_config: str | None,
 ) -> None:
     """Monitor model performance and detect data drift.
 
@@ -367,38 +378,52 @@ def monitor(
       churnguard monitor reference.csv current.csv --output monitoring_output/
     """
     from churnguard.monitoring import (
-        DataDriftDetector,
-        PerformanceMonitor,
-        AlertManager,
-        MonitoringReport,
-        MonitoringReportConfig,
         ADWIN,
         DDM,
-        EDDM,
         DEFAULT_CHURN_ALERT_RULES,
+        EDDM,
+        AlertManager,
+        DataDriftDetector,
+        MonitoringReport,
+        MonitoringReportConfig,
+        PerformanceMonitor,
     )
 
     output_dir = ensure_dir(output) if output else ensure_dir("./churnguard_monitoring")
 
-    console.print(Panel(f"[bold blue]ChurnGuard Monitoring v{__version__}[/bold blue]", title="Model Monitoring"))
+    console.print(
+        Panel(
+            f"[bold blue]ChurnGuard Monitoring v{__version__}[/bold blue]", title="Model Monitoring"
+        )
+    )
 
     # Load data
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+    ) as progress:
         task = progress.add_task("Loading datasets...", total=None)
         reference_df = pd.read_csv(reference_path)
         current_df = pd.read_csv(current_path)
-        progress.update(task, description=f"Reference: {len(reference_df)} rows | Current: {len(current_df)} rows")
+        progress.update(
+            task,
+            description=f"Reference: {len(reference_df)} rows | Current: {len(current_df)} rows",
+        )
 
     # --- Data drift detection ---
     console.print("\n[bold]📊 Data Drift Detection[/bold]")
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+    ) as progress:
         task = progress.add_task("Running drift tests...", total=None)
         detector = DataDriftDetector(
             psi_threshold=psi_threshold,
             ks_alpha=ks_alpha,
         )
         drift_result = detector.detect(reference_df, current_df)
-        progress.update(task, description=f"Drift check complete: {drift_result.n_features_drifted}/{drift_result.n_features_tested} features drifted")
+        progress.update(
+            task,
+            description=f"Drift check complete: {drift_result.n_features_drifted}/{drift_result.n_features_tested} features drifted",
+        )
 
     # Display drift summary
     severity_color = {
@@ -409,9 +434,13 @@ def monitor(
         "critical": "bold red",
     }
     color = severity_color.get(drift_result.overall_severity.value, "white")
-    console.print(f"  Overall severity: [{color}]{drift_result.overall_severity.value.upper()}[/{color}]")
+    console.print(
+        f"  Overall severity: [{color}]{drift_result.overall_severity.value.upper()}[/{color}]"
+    )
     console.print(f"  Drift score: {drift_result.drift_score:.4f}")
-    console.print(f"  Features drifted: {drift_result.n_features_drifted}/{drift_result.n_features_tested}")
+    console.print(
+        f"  Features drifted: {drift_result.n_features_drifted}/{drift_result.n_features_tested}"
+    )
 
     if drift_result.drifted_features():
         table = Table(title="Drifted Features")
@@ -423,7 +452,11 @@ def monitor(
         for psi_r in drift_result.psi_results:
             if psi_r.severity.value != "none":
                 ks_p = next(
-                    (r.p_value for r in drift_result.ks_results if r.feature_name == psi_r.feature_name),
+                    (
+                        r.p_value
+                        for r in drift_result.ks_results
+                        if r.feature_name == psi_r.feature_name
+                    ),
                     None,
                 )
                 table.add_row(
@@ -441,13 +474,14 @@ def monitor(
         console.print("\n[bold]📈 Performance Monitoring[/bold]")
         import joblib
 
-        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+        with Progress(
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+        ) as progress:
             task = progress.add_task("Evaluating performance...", total=None)
 
             perf_monitor = PerformanceMonitor(model_name="churn_model")
 
             # Split reference for baseline evaluation
-            from sklearn.model_selection import train_test_split
             ref_X = reference_df.drop(columns=[target])
             ref_y = reference_df[target]
             cur_X = current_df.drop(columns=[target])
@@ -467,8 +501,16 @@ def monitor(
             else:
                 # Simple heuristic baseline: use reference mean as threshold
                 ref_mean = ref_y.mean()
-                ref_pred = (ref_X.mean(axis=1) > ref_mean).astype(int) if len(ref_X.columns) > 0 else np.zeros(len(ref_y), dtype=int)
-                cur_pred = (cur_X.mean(axis=1) > ref_mean).astype(int) if len(cur_X.columns) > 0 else np.zeros(len(cur_y), dtype=int)
+                ref_pred = (
+                    (ref_X.mean(axis=1) > ref_mean).astype(int)
+                    if len(ref_X.columns) > 0
+                    else np.zeros(len(ref_y), dtype=int)
+                )
+                cur_pred = (
+                    (cur_X.mean(axis=1) > ref_mean).astype(int)
+                    if len(cur_X.columns) > 0
+                    else np.zeros(len(cur_y), dtype=int)
+                )
                 ref_proba = None
                 cur_proba = None
 
@@ -487,10 +529,15 @@ def monitor(
                 y_proba=cur_proba,
             )
 
-            progress.update(task, description=f"Baseline F1={baseline_snapshot.f1:.4f} | Current F1={current_snapshot.f1:.4f}")
+            progress.update(
+                task,
+                description=f"Baseline F1={baseline_snapshot.f1:.4f} | Current F1={current_snapshot.f1:.4f}",
+            )
 
         console.print(f"  Baseline F1: [green]{baseline_snapshot.f1:.4f}[/green]")
-        console.print(f"  Current  F1: [{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]{current_snapshot.f1:.4f}[/{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]")
+        console.print(
+            f"  Current  F1: [{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]{current_snapshot.f1:.4f}[/{'red' if current_snapshot.f1 < baseline_snapshot.f1 else 'green'}]"
+        )
 
         if perf_monitor.alerts:
             console.print(f"\n  [yellow]⚠ {len(perf_monitor.alerts)} performance alert(s)[/yellow]")
@@ -512,9 +559,9 @@ def monitor(
         ddm = DDM()
         eddm = EDDM()
 
-        adwin_results = adwin.update_batch(predictions, cur_y.values)
-        ddm_results = ddm.update_batch(predictions, cur_y.values)
-        eddm_results = eddm.update_batch(predictions, cur_y.values)
+        adwin.update_batch(predictions, cur_y.values)
+        ddm.update_batch(predictions, cur_y.values)
+        eddm.update_batch(predictions, cur_y.values)
 
         concept_drift_results = {
             "ADWIN": adwin.detect(),
@@ -522,7 +569,7 @@ def monitor(
             "EDDM": eddm.detect(),
         }
 
-        for name, result in concept_drift_results.items():
+        for _name, result in concept_drift_results.items():
             console.print(f"  {result.summary()}")
 
     # --- Alert management ---
@@ -531,11 +578,13 @@ def monitor(
 
     if perf_monitor and perf_monitor.snapshots:
         latest = perf_monitor.snapshots[-1]
-        metrics_for_alerts.update({
-            "f1": latest.f1,
-            "roc_auc": latest.roc_auc,
-            "churn_rate": latest.churn_rate,
-        })
+        metrics_for_alerts.update(
+            {
+                "f1": latest.f1,
+                "roc_auc": latest.roc_auc,
+                "churn_rate": latest.churn_rate,
+            }
+        )
 
     new_alerts = alert_manager.check(metrics_for_alerts)
 
@@ -544,16 +593,20 @@ def monitor(
         for alert in new_alerts:
             console.print(f"  • {alert.summary()}")
     else:
-        console.print(f"\n[green]✓ No new alerts[/green]")
+        console.print("\n[green]✓ No new alerts[/green]")
 
     # --- HTML report ---
     if report:
-        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+        with Progress(
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+        ) as progress:
             task = progress.add_task("Generating HTML report...", total=None)
-            report_gen = MonitoringReport(MonitoringReportConfig(
-                title=f"ChurnGuard Monitoring Report — {reference_path}",
-                include_concept_drift=concept_drift_results is not None,
-            ))
+            report_gen = MonitoringReport(
+                MonitoringReportConfig(
+                    title=f"ChurnGuard Monitoring Report — {reference_path}",
+                    include_concept_drift=concept_drift_results is not None,
+                )
+            )
             report_path = output_dir / "monitoring_report.html"
             report_gen.generate(
                 drift_result=drift_result,
@@ -566,6 +619,7 @@ def monitor(
 
     # Save JSON results
     import json as json_mod
+
     results_json = {
         "drift": drift_result.to_dict(),
         "alerts": [a.to_dict() for a in new_alerts],
@@ -602,8 +656,8 @@ if __name__ == "__main__":
 def pipeline(
     ctx: click.Context,
     data_path: str,
-    target: Optional[str],
-    output: Optional[str],
+    target: str | None,
+    output: str | None,
     models: tuple[str, ...],
     optimize_threshold: bool,
     cost_ratio: float,
@@ -666,7 +720,7 @@ def pipeline(
     table.add_column("ROC AUC", justify="right")
     table.add_column("Precision", justify="right")
     table.add_column("Recall", justify="right")
-    for name, r in sorted(result.model_results.items(), key=lambda x: x[1].f1, reverse=True):
+    for _name, r in sorted(result.model_results.items(), key=lambda x: x[1].f1, reverse=True):
         table.add_row(
             r.model_name, f"{r.f1:.4f}", f"{r.roc_auc:.4f}", f"{r.precision:.4f}", f"{r.recall:.4f}"
         )
@@ -721,11 +775,11 @@ def pipeline(
 def threshold(
     ctx: click.Context,
     data_path: str,
-    target: Optional[str],
+    target: str | None,
     model: str,
     strategy: str,
     cost_ratio: float,
-    output: Optional[str],
+    output: str | None,
     seed: int,
 ) -> None:
     """Find the optimal decision threshold for churn classification.
@@ -814,11 +868,11 @@ def threshold(
 def explain(
     ctx: click.Context,
     data_path: str,
-    target: Optional[str],
+    target: str | None,
     model: str,
     customer_id: int,
     top_n: int,
-    output: Optional[str],
+    output: str | None,
     seed: int,
 ) -> None:
     """Explain model predictions using SHAP values.

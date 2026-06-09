@@ -15,24 +15,18 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
-from churnguard.data import DataLoader, DataValidationError, generate_sample_data
-from churnguard.evaluation import ModelEvaluator, format_results_table
+from churnguard.data import DataLoader
+from churnguard.evaluation import ModelEvaluator
 from churnguard.features import FeatureEngineer
 from churnguard.models import ModelRegistry
 from churnguard.models.base import ModelResult
-from churnguard.threshold import (
-    CostMatrix,
-    ThresholdResult,
-    find_threshold_for_target_rate,
-    optimize_threshold,
-)
-from churnguard.utils import ensure_dir, get_config, merge_configs
+from churnguard.threshold import CostMatrix, ThresholdResult, optimize_threshold
+from churnguard.utils import ensure_dir, get_config
 
 logger = logging.getLogger(__name__)
 
@@ -64,15 +58,15 @@ class PipelineConfig:
         business_intervention_success_rate: Probability intervention succeeds.
     """
 
-    model: Union[str, List[str]] = "logistic"
-    feature_config: Optional[Dict[str, Any]] = None
+    model: str | list[str] = "logistic"
+    feature_config: dict[str, Any] | None = None
     test_size: float = 0.2
     random_state: int = 42
     tune_hyperparams: bool = False
     cv_folds: int = 5
     optimize_threshold: bool = False
     threshold_method: str = "f1"
-    cost_matrix: Optional[CostMatrix] = None
+    cost_matrix: CostMatrix | None = None
     compute_explanations: bool = False
     save_plots: bool = True
     output_dir: str = "./churnguard_output"
@@ -80,7 +74,7 @@ class PipelineConfig:
     business_intervention_cost: float = 10.0
     business_intervention_success_rate: float = 0.3
 
-    def get_model_names(self) -> List[str]:
+    def get_model_names(self) -> list[str]:
         """Return model names as a list."""
         if isinstance(self.model, str):
             return [self.model]
@@ -107,13 +101,13 @@ class PipelineResult:
         elapsed_seconds: Total wall-clock time.
     """
 
-    model_results: Dict[str, ModelResult] = field(default_factory=dict)
-    best_model_name: Optional[str] = None
-    threshold_result: Optional[ThresholdResult] = None
-    global_explanation: Optional[Any] = None  # GlobalExplanation from explainability
-    comparison_table: Optional[pd.DataFrame] = None
-    feature_engineer: Optional[FeatureEngineer] = None
-    run_info: Dict[str, Any] = field(default_factory=dict)
+    model_results: dict[str, ModelResult] = field(default_factory=dict)
+    best_model_name: str | None = None
+    threshold_result: ThresholdResult | None = None
+    global_explanation: Any | None = None  # GlobalExplanation from explainability
+    comparison_table: pd.DataFrame | None = None
+    feature_engineer: FeatureEngineer | None = None
+    run_info: dict[str, Any] = field(default_factory=dict)
     elapsed_seconds: float = 0.0
 
     def summary(self) -> str:
@@ -148,7 +142,7 @@ class PipelineResult:
 
         return "\n".join(lines)
 
-    def save_report(self, path: Union[str, Path]) -> None:
+    def save_report(self, path: str | Path) -> None:
         """Save pipeline results as JSON.
 
         Parameters
@@ -159,7 +153,7 @@ class PipelineResult:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        report: Dict[str, Any] = {
+        report: dict[str, Any] = {
             "run_info": self.run_info,
             "best_model": self.best_model_name,
             "elapsed_seconds": self.elapsed_seconds,
@@ -207,7 +201,7 @@ def compute_business_impact(
     revenue_per_customer: float = 100.0,
     intervention_cost: float = 10.0,
     intervention_success_rate: float = 0.3,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute the business impact of a churn prediction model.
 
     Parameters
@@ -305,18 +299,18 @@ class ChurnPipeline:
     >>> print(result.summary())
     """
 
-    def __init__(self, config: Optional[PipelineConfig] = None) -> None:
+    def __init__(self, config: PipelineConfig | None = None) -> None:
         self.config = config or PipelineConfig()
-        self._registry: Optional[ModelRegistry] = None
-        self._engineer: Optional[FeatureEngineer] = None
-        self._best_model: Optional[Any] = None
+        self._registry: ModelRegistry | None = None
+        self._engineer: FeatureEngineer | None = None
+        self._best_model: Any | None = None
         self._is_fitted = False
 
     def run(
         self,
         data_path: str,
-        target: Optional[str] = None,
-        output_dir: Optional[str] = None,
+        target: str | None = None,
+        output_dir: str | None = None,
     ) -> PipelineResult:
         """Run the full churn prediction pipeline.
 
@@ -375,8 +369,8 @@ class ChurnPipeline:
         )
         self._registry = registry
         # Step 3: Train and evaluate models
-        model_results: Dict[str, ModelResult] = {}
-        trained_models: Dict[str, Any] = {}
+        model_results: dict[str, ModelResult] = {}
+        trained_models: dict[str, Any] = {}
         for model_name in registry.available_models:
             try:
                 result = registry.train_and_evaluate(
@@ -475,7 +469,7 @@ class ChurnPipeline:
             save_plots=cfg.save_plots,
             save_json=True,
         )
-        for name, result in model_results.items():
+        for _name, result in model_results.items():
             evaluator.evaluate_model(result, y_test)
 
         comparison_table = evaluator.compare_models(model_results, y_test)
@@ -542,7 +536,7 @@ class ChurnPipeline:
         result["churn_label"] = labels
         return result
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: str | Path) -> None:
         """Save the fitted pipeline to disk.
 
         Parameters
@@ -568,7 +562,7 @@ class ChurnPipeline:
         logger.info("Pipeline saved to %s", path)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> ChurnPipeline:
+    def load(cls, path: str | Path) -> ChurnPipeline:
         """Load a saved pipeline from disk.
 
         Parameters
@@ -598,8 +592,8 @@ class ChurnPipeline:
 
 def run_pipeline(
     data_path: str,
-    target: Optional[str] = None,
-    model: Union[str, List[str]] = "logistic",
+    target: str | None = None,
+    model: str | list[str] = "logistic",
     output_dir: str = "./churnguard_output",
     optimize_threshold: bool = False,
     threshold_method: str = "f1",

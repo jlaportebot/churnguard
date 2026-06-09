@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import pandas as pd
 
@@ -41,7 +40,7 @@ class ModelRegistry:
 
     def __init__(
         self,
-        models: Optional[list[str]] = None,
+        models: list[str] | None = None,
         random_state: int = 42,
         tune_hyperparams: bool = False,
         cv_folds: int = 5,
@@ -122,7 +121,7 @@ class ModelRegistry:
         name: str,
         X_test: pd.DataFrame,
         y_test: pd.Series,
-        feature_names: Optional[list[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> ModelResult:
         """Evaluate a single model.
 
@@ -155,7 +154,7 @@ class ModelRegistry:
         X_test: pd.DataFrame,
         y_train: pd.Series,
         y_test: pd.Series,
-        feature_names: Optional[list[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> ModelResult:
         """Train and evaluate a single model.
 
@@ -183,7 +182,7 @@ class ModelRegistry:
         X_test: pd.DataFrame,
         y_train: pd.Series,
         y_test: pd.Series,
-        feature_names: Optional[list[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> dict[str, ModelResult]:
         """Train and evaluate all registered models.
 
@@ -217,7 +216,7 @@ class ModelRegistry:
 
     def get_best(
         self,
-        results: Optional[dict[str, ModelResult]] = None,
+        results: dict[str, ModelResult] | None = None,
         metric: str = "f1",
     ) -> ModelResult:
         """Get the best model result by a given metric.
@@ -240,7 +239,7 @@ class ModelRegistry:
 
         return max(all_results.values(), key=lambda r: getattr(r, metric))
 
-    def comparison_table(self, results: Optional[dict[str, ModelResult]] = None) -> pd.DataFrame:
+    def comparison_table(self, results: dict[str, ModelResult] | None = None) -> pd.DataFrame:
         """Generate a comparison table of all model results.
 
         Parameters

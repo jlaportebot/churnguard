@@ -12,10 +12,10 @@ from churnguard.monitoring.performance import (
     PerformanceSnapshot,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def y_true() -> np.ndarray:
@@ -40,6 +40,7 @@ def y_proba() -> np.ndarray:
 # ---------------------------------------------------------------------------
 # PerformanceSnapshot tests
 # ---------------------------------------------------------------------------
+
 
 class TestPerformanceSnapshot:
     """Tests for PerformanceSnapshot."""
@@ -71,6 +72,7 @@ class TestPerformanceSnapshot:
 # ---------------------------------------------------------------------------
 # PerformanceAlert tests
 # ---------------------------------------------------------------------------
+
 
 class TestPerformanceAlert:
     """Tests for PerformanceAlert."""
@@ -107,6 +109,7 @@ class TestPerformanceAlert:
 # ---------------------------------------------------------------------------
 # MetricHistory tests
 # ---------------------------------------------------------------------------
+
 
 class TestMetricHistory:
     """Tests for MetricHistory."""
@@ -184,6 +187,7 @@ class TestMetricHistory:
 # ---------------------------------------------------------------------------
 # PerformanceMonitor tests
 # ---------------------------------------------------------------------------
+
 
 class TestPerformanceMonitor:
     """Tests for PerformanceMonitor."""
@@ -285,7 +289,8 @@ class TestPerformanceMonitor:
         """Metadata should be stored in the snapshot."""
         monitor = PerformanceMonitor()
         snap = monitor.evaluate(
-            y_true, y_pred_good,
+            y_true,
+            y_pred_good,
             metadata={"data_source": "production", "version": "2.0"},
         )
         assert snap.metadata["data_source"] == "production"
@@ -301,5 +306,5 @@ class TestPerformanceMonitor:
     def test_no_alerts_first_snapshot(self, y_true, y_pred_good):
         """First snapshot should never trigger degradation alerts."""
         monitor = PerformanceMonitor()
-        snap = monitor.evaluate(y_true, y_pred_good)
+        monitor.evaluate(y_true, y_pred_good)
         assert len(monitor.alerts) == 0

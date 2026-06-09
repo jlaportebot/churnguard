@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -66,8 +65,8 @@ class DataLoader:
     def __init__(
         self,
         source: str | Path,
-        target_column: Optional[str] = None,
-        id_columns: Optional[list[str]] = None,
+        target_column: str | None = None,
+        id_columns: list[str] | None = None,
         drop_na_target: bool = True,
         random_state: int = 42,
         test_size: float = 0.2,
@@ -78,9 +77,9 @@ class DataLoader:
         self.drop_na_target = drop_na_target
         self.random_state = random_state
         self.test_size = test_size
-        self._df: Optional[pd.DataFrame] = None
-        self._target_column_resolved: Optional[str] = None
-        self._id_columns_resolved: Optional[list[str]] = None
+        self._df: pd.DataFrame | None = None
+        self._target_column_resolved: str | None = None
+        self._id_columns_resolved: list[str] | None = None
 
     @property
     def df(self) -> pd.DataFrame:
@@ -134,7 +133,7 @@ class DataLoader:
         self._resolve_target(df)
 
         # Validate target values
-        target = df[self._target_column_resolved]
+        df[self._target_column_resolved]
         if self.drop_na_target:
             n_before = len(df)
             self._df = df.dropna(subset=[self._target_column_resolved])
@@ -245,7 +244,7 @@ class DataLoader:
         return X, y
 
     def split(
-        self, test_size: Optional[float] = None, random_state: Optional[int] = None
+        self, test_size: float | None = None, random_state: int | None = None
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         """Split data into train and test sets.
 

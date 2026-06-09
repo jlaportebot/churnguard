@@ -24,14 +24,16 @@ Quick start
 
 from __future__ import annotations
 
-from churnguard.monitoring.drift import (
-    DataDriftDetector,
-    DriftResult,
-    DriftSeverity,
-    PSIResult,
-    KSTestResult,
-    ChiSquareResult,
-    compute_psi,
+from churnguard.monitoring.alerts import (
+    DEFAULT_CHURN_ALERT_RULES,
+    Alert,
+    AlertAction,
+    AlertManager,
+    AlertRule,
+    AlertSeverity,
+    CallbackAlertAction,
+    FileAlertAction,
+    LogAlertAction,
 )
 from churnguard.monitoring.concept import (
     ADWIN,
@@ -41,22 +43,20 @@ from churnguard.monitoring.concept import (
     ConceptDriftResult,
     DriftState,
 )
+from churnguard.monitoring.drift import (
+    ChiSquareResult,
+    DataDriftDetector,
+    DriftResult,
+    DriftSeverity,
+    KSTestResult,
+    PSIResult,
+    compute_psi,
+)
 from churnguard.monitoring.performance import (
+    MetricHistory,
+    PerformanceAlert,
     PerformanceMonitor,
     PerformanceSnapshot,
-    PerformanceAlert,
-    MetricHistory,
-)
-from churnguard.monitoring.alerts import (
-    AlertManager,
-    Alert,
-    AlertRule,
-    AlertSeverity,
-    AlertAction,
-    LogAlertAction,
-    FileAlertAction,
-    CallbackAlertAction,
-    DEFAULT_CHURN_ALERT_RULES,
 )
 from churnguard.monitoring.report import (
     MonitoringReport,

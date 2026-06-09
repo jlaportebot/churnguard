@@ -85,7 +85,7 @@ class TestModelEvaluator:
     def test_output_dir_creation(self, tmp_path):
         """Test that output directory is created if it doesn't exist."""
         output = tmp_path / "new_dir" / "sub"
-        evaluator = ModelEvaluator(output_dir=output, save_plots=True)
+        ModelEvaluator(output_dir=output, save_plots=True)
         assert output.exists()
 
     def test_confusion_matrix_in_report(self, sample_result, y_test):

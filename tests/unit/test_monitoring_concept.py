@@ -7,17 +7,17 @@ import pytest
 
 from churnguard.monitoring.concept import (
     ADWIN,
+    DDM,
+    EDDM,
     ConceptDriftDetector,
     ConceptDriftResult,
-    DDM,
     DriftState,
-    EDDM,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _generate_stable_stream(n: int = 500, error_rate: float = 0.1, seed: int = 42):
     """Generate a stream of predictions/labels with stable error rate."""
@@ -31,10 +31,13 @@ def _generate_stable_stream(n: int = 500, error_rate: float = 0.1, seed: int = 4
     return predictions, labels
 
 
-def _generate_drifting_stream(n_pre: int = 300, n_post: int = 300,
-                               error_rate_pre: float = 0.1,
-                               error_rate_post: float = 0.4,
-                               seed: int = 42):
+def _generate_drifting_stream(
+    n_pre: int = 300,
+    n_post: int = 300,
+    error_rate_pre: float = 0.1,
+    error_rate_post: float = 0.4,
+    seed: int = 42,
+):
     """Generate a stream with a drift point in the middle."""
     rng = np.random.RandomState(seed)
     labels_pre = rng.binomial(1, 0.5, n_pre)
@@ -59,6 +62,7 @@ def _generate_drifting_stream(n_pre: int = 300, n_post: int = 300,
 # DriftState tests
 # ---------------------------------------------------------------------------
 
+
 class TestDriftState:
     """Tests for DriftState enum."""
 
@@ -74,6 +78,7 @@ class TestDriftState:
 # ---------------------------------------------------------------------------
 # ConceptDriftResult tests
 # ---------------------------------------------------------------------------
+
 
 class TestConceptDriftResult:
     """Tests for ConceptDriftResult data class."""
@@ -110,6 +115,7 @@ class TestConceptDriftResult:
 # ADWIN tests
 # ---------------------------------------------------------------------------
 
+
 class TestADWIN:
     """Tests for the ADWIN detector."""
 
@@ -135,7 +141,8 @@ class TestADWIN:
         """ADWIN should detect drift when error rate changes significantly."""
         adwin = ADWIN(delta=0.002, min_window_size=5)
         predictions, labels = _generate_drifting_stream(
-            n_pre=300, n_post=500,
+            n_pre=300,
+            n_post=500,
             error_rate_pre=0.05,
             error_rate_post=0.45,
         )
@@ -148,7 +155,7 @@ class TestADWIN:
     def test_reset(self):
         """Reset should clear all state."""
         adwin = ADWIN()
-        for i in range(20):
+        for _i in range(20):
             adwin.update(0, 0)
 
         adwin.reset()
@@ -178,7 +185,8 @@ class TestADWIN:
         adwin_lenient = ADWIN(delta=0.01, min_window_size=5)
 
         predictions, labels = _generate_drifting_stream(
-            n_pre=200, n_post=300,
+            n_pre=200,
+            n_post=300,
             error_rate_pre=0.1,
             error_rate_post=0.35,
         )
@@ -195,6 +203,7 @@ class TestADWIN:
 # ---------------------------------------------------------------------------
 # DDM tests
 # ---------------------------------------------------------------------------
+
 
 class TestDDM:
     """Tests for the DDM detector."""
@@ -220,7 +229,8 @@ class TestDDM:
         """DDM should detect drift when error rate increases."""
         ddm = DDM(min_samples=30, warning_level=2.0, drift_level=3.0)
         predictions, labels = _generate_drifting_stream(
-            n_pre=200, n_post=500,
+            n_pre=200,
+            n_post=500,
             error_rate_pre=0.05,
             error_rate_post=0.50,
         )
@@ -234,7 +244,7 @@ class TestDDM:
     def test_reset(self):
         """Reset should clear all state."""
         ddm = DDM()
-        for i in range(50):
+        for _i in range(50):
             ddm.update(0, 0)
 
         ddm.reset()
@@ -245,7 +255,8 @@ class TestDDM:
         """Custom warning/drift levels should work."""
         ddm = DDM(warning_level=1.5, drift_level=2.5, min_samples=20)
         predictions, labels = _generate_drifting_stream(
-            n_pre=100, n_post=300,
+            n_pre=100,
+            n_post=300,
             error_rate_pre=0.1,
             error_rate_post=0.5,
         )
@@ -282,6 +293,7 @@ class TestDDM:
 # EDDM tests
 # ---------------------------------------------------------------------------
 
+
 class TestEDDM:
     """Tests for the EDDM detector."""
 
@@ -306,7 +318,8 @@ class TestEDDM:
         """EDDM should detect drift in a significantly drifting stream."""
         eddm = EDDM(alpha=0.95, beta=0.90, min_samples=25)
         predictions, labels = _generate_drifting_stream(
-            n_pre=200, n_post=500,
+            n_pre=200,
+            n_post=500,
             error_rate_pre=0.05,
             error_rate_post=0.55,
         )
@@ -356,6 +369,7 @@ class TestEDDM:
 # ---------------------------------------------------------------------------
 # Abstract base class tests
 # ---------------------------------------------------------------------------
+
 
 class TestConceptDriftDetectorABC:
     """Tests that the abstract base class enforces the interface."""

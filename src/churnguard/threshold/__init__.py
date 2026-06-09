@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from sklearn.metrics import (
@@ -73,7 +73,7 @@ class CostMatrix:
         """
         return tp * self.tp_benefit - fp * self.fp_cost - fn * self.fn_cost + tn * self.tn_benefit
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Serialize cost matrix to dict."""
         return {
             "tp_benefit": self.tp_benefit,
@@ -104,9 +104,9 @@ class ThresholdResult:
     threshold: float
     method: str
     metric_value: float
-    metrics: Dict[str, float]
-    all_thresholds: Optional[np.ndarray] = None
-    all_scores: Optional[np.ndarray] = None
+    metrics: dict[str, float]
+    all_thresholds: np.ndarray | None = None
+    all_scores: np.ndarray | None = None
 
     def summary(self) -> str:
         """Human-readable summary."""
@@ -118,7 +118,7 @@ class ThresholdResult:
             lines.append(f"  {k}: {v:.4f}")
         return "\n".join(lines)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "threshold": self.threshold,
@@ -137,7 +137,7 @@ def _scan_thresholds(
     y_true: np.ndarray,
     y_proba: np.ndarray,
     n_thresholds: int = 100,
-) -> Tuple[np.ndarray, List[Dict[str, float]]]:
+) -> tuple[np.ndarray, list[dict[str, float]]]:
     """Evaluate metrics at evenly spaced thresholds.
 
     Parameters
@@ -157,12 +157,12 @@ def _scan_thresholds(
         List of metric dicts at each threshold.
     """
     thresholds = np.linspace(0.01, 0.99, n_thresholds)
-    metrics_list: List[Dict[str, float]] = []
+    metrics_list: list[dict[str, float]] = []
 
     for t in thresholds:
         y_pred = (y_proba >= t).astype(int)
         # Handle edge case where all predictions are the same class
-        n_unique = len(np.unique(y_pred))
+        len(np.unique(y_pred))
         metrics_list.append(
             {
                 "accuracy": accuracy_score(y_true, y_pred),
@@ -265,7 +265,7 @@ def optimize_youden(
 def optimize_cost(
     y_true: np.ndarray,
     y_proba: np.ndarray,
-    cost_matrix: Optional[CostMatrix] = None,
+    cost_matrix: CostMatrix | None = None,
     n_thresholds: int = 100,
 ) -> ThresholdResult:
     """Find the threshold that maximizes expected business value.
@@ -432,7 +432,7 @@ def optimize_threshold(
     y_true: np.ndarray,
     y_proba: np.ndarray,
     method: str = "f1",
-    cost_matrix: Optional[CostMatrix] = None,
+    cost_matrix: CostMatrix | None = None,
     target_precision: float = 0.7,
     target_rate: float = 0.2,
     n_thresholds: int = 100,
@@ -516,7 +516,7 @@ class ThresholdOptimizer:
         y_true: np.ndarray,
         y_proba: np.ndarray,
         strategy: str = "f1",
-        cost_matrix: Optional[CostMatrix] = None,
+        cost_matrix: CostMatrix | None = None,
         target_precision: float = 0.7,
     ) -> ThresholdResult:
         """Find the optimal decision threshold.

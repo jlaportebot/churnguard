@@ -18,7 +18,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Severity enum
 # ---------------------------------------------------------------------------
+
 
 class DriftSeverity(str, Enum):
     """Severity of detected drift."""
@@ -70,6 +71,7 @@ class DriftSeverity(str, Enum):
 # Per-feature result containers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PSIResult:
     """PSI (Population Stability Index) result for a single feature.
@@ -85,10 +87,10 @@ class PSIResult:
     feature_name: str
     psi_value: float
     severity: DriftSeverity
-    reference_bins: Optional[np.ndarray] = None
-    current_bins: Optional[np.ndarray] = None
+    reference_bins: np.ndarray | None = None
+    current_bins: np.ndarray | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "feature_name": self.feature_name,
@@ -98,10 +100,7 @@ class PSIResult:
 
     def summary(self) -> str:
         """Human-readable summary."""
-        return (
-            f"PSI({self.feature_name})={self.psi_value:.4f} "
-            f"→ {self.severity.value.upper()}"
-        )
+        return f"PSI({self.feature_name})={self.psi_value:.4f} → {self.severity.value.upper()}"
 
 
 @dataclass
@@ -120,7 +119,7 @@ class KSTestResult:
     p_value: float
     severity: DriftSeverity
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "feature_name": self.feature_name,
@@ -155,7 +154,7 @@ class ChiSquareResult:
     degrees_of_freedom: int
     severity: DriftSeverity
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "feature_name": self.feature_name,
@@ -178,6 +177,7 @@ class ChiSquareResult:
 # Aggregate result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DriftResult:
     """Aggregate drift detection result across all features.
@@ -194,9 +194,9 @@ class DriftResult:
     """
 
     timestamp: str
-    psi_results: List[PSIResult] = field(default_factory=list)
-    ks_results: List[KSTestResult] = field(default_factory=list)
-    chi_square_results: List[ChiSquareResult] = field(default_factory=list)
+    psi_results: list[PSIResult] = field(default_factory=list)
+    ks_results: list[KSTestResult] = field(default_factory=list)
+    chi_square_results: list[ChiSquareResult] = field(default_factory=list)
     n_features_tested: int = 0
     n_features_drifted: int = 0
     drift_score: float = 0.0
@@ -211,7 +211,7 @@ class DriftResult:
             f"severity={self.overall_severity.value.upper()}"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "timestamp": self.timestamp,
@@ -224,7 +224,7 @@ class DriftResult:
             "chi_square_results": [r.to_dict() for r in self.chi_square_results],
         }
 
-    def drifted_features(self) -> List[str]:
+    def drifted_features(self) -> list[str]:
         """Return feature names that show drift."""
         drifted = set()
         for r in self.psi_results:
@@ -243,12 +243,13 @@ class DriftResult:
 # PSI computation
 # ---------------------------------------------------------------------------
 
+
 def compute_psi(
     reference: np.ndarray,
     current: np.ndarray,
     n_bins: int = 10,
-    bin_edges: Optional[np.ndarray] = None,
-) -> Tuple[float, np.ndarray, np.ndarray]:
+    bin_edges: np.ndarray | None = None,
+) -> tuple[float, np.ndarray, np.ndarray]:
     """Compute the Population Stability Index (PSI).
 
     Parameters
@@ -301,6 +302,7 @@ def compute_psi(
 # DataDriftDetector
 # ---------------------------------------------------------------------------
 
+
 class DataDriftDetector:
     """Detect data drift between reference and current datasets.
 
@@ -329,8 +331,8 @@ class DataDriftDetector:
         ks_alpha: float = 0.05,
         chi_alpha: float = 0.05,
         n_bins: int = 10,
-        max_features: Optional[int] = None,
-        categorical_features: Optional[List[str]] = None,
+        max_features: int | None = None,
+        categorical_features: list[str] | None = None,
     ) -> None:
         self.psi_threshold = psi_threshold
         self.ks_alpha = ks_alpha
@@ -343,7 +345,7 @@ class DataDriftDetector:
         self,
         reference: pd.DataFrame,
         current: pd.DataFrame,
-        timestamp: Optional[str] = None,
+        timestamp: str | None = None,
     ) -> DriftResult:
         """Run drift detection on all common features.
 
@@ -365,12 +367,10 @@ class DataDriftDetector:
 
         # Find common numeric columns
         common_cols = list(set(reference.columns) & set(current.columns))
-        numeric_cols = [
-            c for c in common_cols
-            if pd.api.types.is_numeric_dtype(reference[c])
-        ]
+        numeric_cols = [c for c in common_cols if pd.api.types.is_numeric_dtype(reference[c])]
         categorical_cols = [
-            c for c in common_cols
+            c
+            for c in common_cols
             if c in self.categorical_features
             or isinstance(reference[c].dtype, pd.CategoricalDtype)
             or reference[c].dtype == object
@@ -381,9 +381,9 @@ class DataDriftDetector:
             numeric_cols = numeric_cols[: self.max_features]
             categorical_cols = categorical_cols[: max(0, self.max_features - len(numeric_cols))]
 
-        psi_results: List[PSIResult] = []
-        ks_results: List[KSTestResult] = []
-        chi_results: List[ChiSquareResult] = []
+        psi_results: list[PSIResult] = []
+        ks_results: list[KSTestResult] = []
+        chi_results: list[ChiSquareResult] = []
 
         # --- Numeric features: PSI + KS ---
         for col in numeric_cols:
@@ -395,17 +395,17 @@ class DataDriftDetector:
 
             # PSI
             try:
-                psi_val, ref_bins, cur_bins = compute_psi(
-                    ref_vals, cur_vals, n_bins=self.n_bins
-                )
+                psi_val, ref_bins, cur_bins = compute_psi(ref_vals, cur_vals, n_bins=self.n_bins)
                 psi_severity = DriftSeverity.from_psi(psi_val)
-                psi_results.append(PSIResult(
-                    feature_name=col,
-                    psi_value=psi_val,
-                    severity=psi_severity,
-                    reference_bins=ref_bins,
-                    current_bins=cur_bins,
-                ))
+                psi_results.append(
+                    PSIResult(
+                        feature_name=col,
+                        psi_value=psi_val,
+                        severity=psi_severity,
+                        reference_bins=ref_bins,
+                        current_bins=cur_bins,
+                    )
+                )
             except Exception as e:
                 logger.warning("PSI computation failed for %s: %s", col, e)
 
@@ -413,12 +413,14 @@ class DataDriftDetector:
             try:
                 ks_stat, ks_p = stats.ks_2samp(ref_vals, cur_vals)
                 ks_severity = DriftSeverity.from_p_value(ks_p, self.ks_alpha)
-                ks_results.append(KSTestResult(
-                    feature_name=col,
-                    statistic=float(ks_stat),
-                    p_value=float(ks_p),
-                    severity=ks_severity,
-                ))
+                ks_results.append(
+                    KSTestResult(
+                        feature_name=col,
+                        statistic=float(ks_stat),
+                        p_value=float(ks_p),
+                        severity=ks_severity,
+                    )
+                )
             except Exception as e:
                 logger.warning("KS test failed for %s: %s", col, e)
 
@@ -433,12 +435,8 @@ class DataDriftDetector:
             try:
                 # Build contingency table
                 all_categories = sorted(set(ref_vals) | set(cur_vals))
-                ref_counts = np.array([
-                    np.sum(ref_vals == cat) for cat in all_categories
-                ])
-                cur_counts = np.array([
-                    np.sum(cur_vals == cat) for cat in all_categories
-                ])
+                ref_counts = np.array([np.sum(ref_vals == cat) for cat in all_categories])
+                cur_counts = np.array([np.sum(cur_vals == cat) for cat in all_categories])
 
                 # Filter out categories with 0 in both
                 mask = (ref_counts + cur_counts) > 0
@@ -451,31 +449,28 @@ class DataDriftDetector:
                 chi_stat, chi_p = stats.chisquare(cur_counts, f_exp=ref_counts)
                 chi_severity = DriftSeverity.from_p_value(chi_p, self.chi_alpha)
 
-                chi_results.append(ChiSquareResult(
-                    feature_name=col,
-                    statistic=float(chi_stat),
-                    p_value=float(chi_p),
-                    degrees_of_freedom=int(len(ref_counts) - 1),
-                    severity=chi_severity,
-                ))
+                chi_results.append(
+                    ChiSquareResult(
+                        feature_name=col,
+                        statistic=float(chi_stat),
+                        p_value=float(chi_p),
+                        degrees_of_freedom=int(len(ref_counts) - 1),
+                        severity=chi_severity,
+                    )
+                )
             except Exception as e:
                 logger.warning("Chi-square test failed for %s: %s", col, e)
 
         # Aggregate results
         n_tested = len(psi_results) + len(chi_results)
-        n_drifted = sum(
-            1 for r in psi_results if r.severity != DriftSeverity.NONE
-        ) + sum(
-            1 for r in ks_results if r.severity != DriftSeverity.NONE
-        ) + sum(
-            1 for r in chi_results if r.severity != DriftSeverity.NONE
+        n_drifted = (
+            sum(1 for r in psi_results if r.severity != DriftSeverity.NONE)
+            + sum(1 for r in ks_results if r.severity != DriftSeverity.NONE)
+            + sum(1 for r in chi_results if r.severity != DriftSeverity.NONE)
         )
 
         # Compute aggregate drift score (0–1)
-        if n_tested > 0:
-            drift_score = min(n_drifted / n_tested, 1.0)
-        else:
-            drift_score = 0.0
+        drift_score = min(n_drifted / n_tested, 1.0) if n_tested > 0 else 0.0
 
         # Overall severity
         if drift_score == 0:

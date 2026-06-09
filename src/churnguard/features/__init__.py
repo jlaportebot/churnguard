@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class FeatureEngineer:
         self.generate_polynomials = generate_polynomials
         self.polynomial_degree = polynomial_degree
 
-        self._column_transformer: Optional[ColumnTransformer] = None
+        self._column_transformer: ColumnTransformer | None = None
         self._numeric_cols: list[str] = []
         self._categorical_cols: list[str] = []
         self._onehot_cols: list[str] = []
@@ -177,7 +176,7 @@ class FeatureEngineer:
             verbose_feature_names_out=False,
         )
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> FeatureEngineer:
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> FeatureEngineer:
         """Fit the feature engineering pipeline.
 
         Parameters
@@ -254,7 +253,7 @@ class FeatureEngineer:
 
         return result
 
-    def fit_transform(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> pd.DataFrame:
+    def fit_transform(self, X: pd.DataFrame, y: pd.Series | None = None) -> pd.DataFrame:
         """Fit and transform in one step.
 
         Parameters
@@ -337,14 +336,14 @@ class FeatureSelector:
         self,
         method: str = "variance",
         threshold: float = 0.01,
-        max_features: Optional[int] = None,
+        max_features: int | None = None,
     ):
         self.method = method
         self.threshold = threshold
         self.max_features = max_features
         self._selected_features: list[str] = []
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> FeatureSelector:
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> FeatureSelector:
         """Fit the selector to determine which features to keep."""
         if self.method == "variance":
             variances = X.var()
@@ -385,7 +384,7 @@ class FeatureSelector:
         """Transform X to keep only selected features."""
         return X[[c for c in self._selected_features if c in X.columns]]
 
-    def fit_transform(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> pd.DataFrame:
+    def fit_transform(self, X: pd.DataFrame, y: pd.Series | None = None) -> pd.DataFrame:
         """Fit and transform in one step."""
         return self.fit(X, y).transform(X)
 

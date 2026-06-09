@@ -24,7 +24,7 @@ from churnguard.threshold import (
 @pytest.fixture
 def simple_data():
     """Simple binary classification data with known properties."""
-    rng = np.random.RandomState(42)
+    np.random.RandomState(42)
     y_true = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
     # Good probabilities: perfect separation at 0.5
     y_proba = np.array([0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.85, 0.9])

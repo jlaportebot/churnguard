@@ -9,17 +9,17 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    average_precision_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PerformanceSnapshot:
@@ -59,9 +60,9 @@ class PerformanceSnapshot:
     pr_auc: float = 0.0
     churn_rate: float = 0.0
     threshold: float = 0.5
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "timestamp": self.timestamp,
@@ -118,7 +119,7 @@ class PerformanceAlert:
             f"({self.baseline_value:.4f} → {self.current_value:.4f})"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "timestamp": self.timestamp,
@@ -142,8 +143,8 @@ class MetricHistory:
 
     def __init__(self, metric_name: str) -> None:
         self.metric_name = metric_name
-        self._timestamps: List[str] = []
-        self._values: List[float] = []
+        self._timestamps: list[str] = []
+        self._values: list[float] = []
 
     def add(self, timestamp: str, value: float) -> None:
         """Add a new measurement.
@@ -164,15 +165,15 @@ class MetricHistory:
         return np.array(self._values)
 
     @property
-    def timestamps(self) -> List[str]:
+    def timestamps(self) -> list[str]:
         """Return all timestamps."""
         return self._timestamps
 
-    def latest(self) -> Optional[float]:
+    def latest(self) -> float | None:
         """Return the most recent value."""
         return self._values[-1] if self._values else None
 
-    def baseline(self) -> Optional[float]:
+    def baseline(self) -> float | None:
         """Return the first (baseline) value."""
         return self._values[0] if self._values else None
 
@@ -212,10 +213,12 @@ class MetricHistory:
 
     def to_dataframe(self) -> pd.DataFrame:
         """Convert to a pandas DataFrame."""
-        return pd.DataFrame({
-            "timestamp": self._timestamps,
-            self.metric_name: self._values,
-        })
+        return pd.DataFrame(
+            {
+                "timestamp": self._timestamps,
+                self.metric_name: self._values,
+            }
+        )
 
     def __len__(self) -> int:
         return len(self._values)
@@ -224,6 +227,7 @@ class MetricHistory:
 # ---------------------------------------------------------------------------
 # PerformanceMonitor
 # ---------------------------------------------------------------------------
+
 
 class PerformanceMonitor:
     """Monitor model performance over time and detect degradation.
@@ -247,26 +251,26 @@ class PerformanceMonitor:
         model_name: str = "churn_model",
         warning_threshold_pct: float = 5.0,
         critical_threshold_pct: float = 15.0,
-        metrics_to_track: Optional[List[str]] = None,
+        metrics_to_track: list[str] | None = None,
     ) -> None:
         self.model_name = model_name
         self.warning_threshold_pct = warning_threshold_pct
         self.critical_threshold_pct = critical_threshold_pct
         self._metrics_to_track = metrics_to_track or self.DEFAULT_METRICS
-        self._history: Dict[str, MetricHistory] = {
+        self._history: dict[str, MetricHistory] = {
             m: MetricHistory(m) for m in self._metrics_to_track
         }
-        self._snapshots: List[PerformanceSnapshot] = []
-        self._alerts: List[PerformanceAlert] = []
+        self._snapshots: list[PerformanceSnapshot] = []
+        self._alerts: list[PerformanceAlert] = []
 
     def evaluate(
         self,
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        y_proba: Optional[np.ndarray] = None,
+        y_proba: np.ndarray | None = None,
         threshold: float = 0.5,
-        timestamp: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PerformanceSnapshot:
         """Evaluate model performance and record a snapshot.
 
@@ -339,7 +343,7 @@ class PerformanceMonitor:
 
     def _check_degradation(
         self, snapshot: PerformanceSnapshot, timestamp: str
-    ) -> List[PerformanceAlert]:
+    ) -> list[PerformanceAlert]:
         """Check if any metrics have degraded relative to baseline.
 
         Parameters
@@ -371,44 +375,48 @@ class PerformanceMonitor:
             degradation_pct = (baseline_val - current_val) / baseline_val * 100
 
             if degradation_pct >= self.critical_threshold_pct:
-                alerts.append(PerformanceAlert(
-                    timestamp=timestamp,
-                    metric_name=metric_name,
-                    current_value=current_val,
-                    baseline_value=baseline_val,
-                    degradation_pct=degradation_pct,
-                    severity="critical",
-                    model_name=self.model_name,
-                ))
+                alerts.append(
+                    PerformanceAlert(
+                        timestamp=timestamp,
+                        metric_name=metric_name,
+                        current_value=current_val,
+                        baseline_value=baseline_val,
+                        degradation_pct=degradation_pct,
+                        severity="critical",
+                        model_name=self.model_name,
+                    )
+                )
             elif degradation_pct >= self.warning_threshold_pct:
-                alerts.append(PerformanceAlert(
-                    timestamp=timestamp,
-                    metric_name=metric_name,
-                    current_value=current_val,
-                    baseline_value=baseline_val,
-                    degradation_pct=degradation_pct,
-                    severity="warning",
-                    model_name=self.model_name,
-                ))
+                alerts.append(
+                    PerformanceAlert(
+                        timestamp=timestamp,
+                        metric_name=metric_name,
+                        current_value=current_val,
+                        baseline_value=baseline_val,
+                        degradation_pct=degradation_pct,
+                        severity="warning",
+                        model_name=self.model_name,
+                    )
+                )
 
         return alerts
 
     @property
-    def alerts(self) -> List[PerformanceAlert]:
+    def alerts(self) -> list[PerformanceAlert]:
         """All alerts generated so far."""
         return self._alerts
 
     @property
-    def snapshots(self) -> List[PerformanceSnapshot]:
+    def snapshots(self) -> list[PerformanceSnapshot]:
         """All recorded snapshots."""
         return self._snapshots
 
     @property
-    def history(self) -> Dict[str, MetricHistory]:
+    def history(self) -> dict[str, MetricHistory]:
         """Metric history objects."""
         return self._history
 
-    def get_trends(self) -> Dict[str, str]:
+    def get_trends(self) -> dict[str, str]:
         """Get the current trend for each tracked metric.
 
         Returns
@@ -432,8 +440,7 @@ class PerformanceMonitor:
             latest = hist.latest()
             baseline = hist.baseline()
             lines.append(
-                f"  {metric}: {trend} "
-                f"(baseline={baseline:.4f}, current={latest:.4f})"
+                f"  {metric}: {trend} (baseline={baseline:.4f}, current={latest:.4f})"
                 if latest is not None and baseline is not None
                 else f"  {metric}: {trend} (no data)"
             )

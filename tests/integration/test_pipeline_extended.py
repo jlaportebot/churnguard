@@ -82,7 +82,7 @@ class TestPipelineIntegration:
     def test_pipeline_report_json(self, sample_csv, tmp_path):
         """Verify JSON report is properly structured."""
         out_dir = tmp_path / "output"
-        result = run_pipeline(
+        run_pipeline(
             sample_csv,
             target="churn",
             model="logistic",

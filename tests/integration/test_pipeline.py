@@ -48,7 +48,7 @@ class TestFullPipeline:
         # Evaluation
         output_dir = tmp_path / "results"
         evaluator = ModelEvaluator(output_dir=output_dir, save_plots=False, save_json=True)
-        for name, result in results.items():
+        for _name, result in results.items():
             evaluator.evaluate_model(result, y_test)
 
         # Assertions
@@ -123,7 +123,7 @@ class TestFullPipeline:
             generate_interactions=feat_config["generate_interactions"],
         )
         X_train_tf = engineer.fit_transform(X_train)
-        X_test_tf = engineer.transform(X_test)
+        engineer.transform(X_test)
 
         assert X_train_tf.shape[0] == len(X_train)
 

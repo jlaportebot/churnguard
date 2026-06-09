@@ -16,23 +16,25 @@ from churnguard.monitoring.drift import (
     compute_psi,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def reference_df() -> pd.DataFrame:
     """Create a reference (training) dataset."""
     np.random.seed(42)
     n = 500
-    return pd.DataFrame({
-        "tenure": np.random.exponential(30, n),
-        "monthly_charges": np.random.normal(65, 15, n),
-        "total_charges": np.random.exponential(2000, n),
-        "support_calls": np.random.poisson(1.5, n),
-        "churn": np.random.binomial(1, 0.2, n),
-    })
+    return pd.DataFrame(
+        {
+            "tenure": np.random.exponential(30, n),
+            "monthly_charges": np.random.normal(65, 15, n),
+            "total_charges": np.random.exponential(2000, n),
+            "support_calls": np.random.poisson(1.5, n),
+            "churn": np.random.binomial(1, 0.2, n),
+        }
+    )
 
 
 @pytest.fixture
@@ -40,13 +42,15 @@ def similar_df() -> pd.DataFrame:
     """Create a current dataset similar to reference (no drift)."""
     np.random.seed(99)
     n = 400
-    return pd.DataFrame({
-        "tenure": np.random.exponential(30, n),
-        "monthly_charges": np.random.normal(65, 15, n),
-        "total_charges": np.random.exponential(2000, n),
-        "support_calls": np.random.poisson(1.5, n),
-        "churn": np.random.binomial(1, 0.2, n),
-    })
+    return pd.DataFrame(
+        {
+            "tenure": np.random.exponential(30, n),
+            "monthly_charges": np.random.normal(65, 15, n),
+            "total_charges": np.random.exponential(2000, n),
+            "support_calls": np.random.poisson(1.5, n),
+            "churn": np.random.binomial(1, 0.2, n),
+        }
+    )
 
 
 @pytest.fixture
@@ -54,13 +58,15 @@ def drifted_df() -> pd.DataFrame:
     """Create a current dataset with significant drift."""
     np.random.seed(77)
     n = 400
-    return pd.DataFrame({
-        "tenure": np.random.exponential(10, n),       # much shorter tenure
-        "monthly_charges": np.random.normal(100, 10, n),  # higher charges
-        "total_charges": np.random.exponential(500, n),   # lower total
-        "support_calls": np.random.poisson(5.0, n),      # more calls
-        "churn": np.random.binomial(1, 0.5, n),          # higher churn
-    })
+    return pd.DataFrame(
+        {
+            "tenure": np.random.exponential(10, n),  # much shorter tenure
+            "monthly_charges": np.random.normal(100, 10, n),  # higher charges
+            "total_charges": np.random.exponential(500, n),  # lower total
+            "support_calls": np.random.poisson(5.0, n),  # more calls
+            "churn": np.random.binomial(1, 0.5, n),  # higher churn
+        }
+    )
 
 
 @pytest.fixture
@@ -68,11 +74,17 @@ def categorical_df() -> pd.DataFrame:
     """Create a reference dataset with categorical features."""
     np.random.seed(42)
     n = 500
-    return pd.DataFrame({
-        "contract": np.random.choice(["month-to-month", "one-year", "two-year"], n, p=[0.5, 0.3, 0.2]),
-        "payment_method": np.random.choice(["credit", "bank_transfer", "electronic", "mailed"], n),
-        "monthly_charges": np.random.normal(65, 15, n),
-    })
+    return pd.DataFrame(
+        {
+            "contract": np.random.choice(
+                ["month-to-month", "one-year", "two-year"], n, p=[0.5, 0.3, 0.2]
+            ),
+            "payment_method": np.random.choice(
+                ["credit", "bank_transfer", "electronic", "mailed"], n
+            ),
+            "monthly_charges": np.random.normal(65, 15, n),
+        }
+    )
 
 
 @pytest.fixture
@@ -80,16 +92,23 @@ def drifted_categorical_df() -> pd.DataFrame:
     """Create a current dataset with shifted categorical distributions."""
     np.random.seed(99)
     n = 400
-    return pd.DataFrame({
-        "contract": np.random.choice(["month-to-month", "one-year", "two-year"], n, p=[0.8, 0.15, 0.05]),
-        "payment_method": np.random.choice(["credit", "bank_transfer", "electronic", "mailed"], n),
-        "monthly_charges": np.random.normal(65, 15, n),
-    })
+    return pd.DataFrame(
+        {
+            "contract": np.random.choice(
+                ["month-to-month", "one-year", "two-year"], n, p=[0.8, 0.15, 0.05]
+            ),
+            "payment_method": np.random.choice(
+                ["credit", "bank_transfer", "electronic", "mailed"], n
+            ),
+            "monthly_charges": np.random.normal(65, 15, n),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # DriftSeverity tests
 # ---------------------------------------------------------------------------
+
 
 class TestDriftSeverity:
     """Tests for DriftSeverity enum."""
@@ -126,6 +145,7 @@ class TestDriftSeverity:
 # ---------------------------------------------------------------------------
 # PSI computation tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputePSI:
     """Tests for the compute_psi function."""
@@ -174,6 +194,7 @@ class TestComputePSI:
 # Result container tests
 # ---------------------------------------------------------------------------
 
+
 class TestPSIResult:
     """Tests for PSIResult data class."""
 
@@ -196,14 +217,18 @@ class TestKSTestResult:
     """Tests for KSTestResult data class."""
 
     def test_to_dict(self):
-        result = KSTestResult(feature_name="age", statistic=0.3, p_value=0.001, severity=DriftSeverity.HIGH)
+        result = KSTestResult(
+            feature_name="age", statistic=0.3, p_value=0.001, severity=DriftSeverity.HIGH
+        )
         d = result.to_dict()
         assert d["feature_name"] == "age"
         assert d["statistic"] == 0.3
         assert d["p_value"] == 0.001
 
     def test_summary(self):
-        result = KSTestResult(feature_name="age", statistic=0.3, p_value=0.001, severity=DriftSeverity.HIGH)
+        result = KSTestResult(
+            feature_name="age", statistic=0.3, p_value=0.001, severity=DriftSeverity.HIGH
+        )
         assert "KS" in result.summary()
         assert "age" in result.summary()
 
@@ -213,16 +238,22 @@ class TestChiSquareResult:
 
     def test_to_dict(self):
         result = ChiSquareResult(
-            feature_name="contract", statistic=25.0, p_value=0.001,
-            degrees_of_freedom=2, severity=DriftSeverity.HIGH,
+            feature_name="contract",
+            statistic=25.0,
+            p_value=0.001,
+            degrees_of_freedom=2,
+            severity=DriftSeverity.HIGH,
         )
         d = result.to_dict()
         assert d["degrees_of_freedom"] == 2
 
     def test_summary(self):
         result = ChiSquareResult(
-            feature_name="contract", statistic=25.0, p_value=0.001,
-            degrees_of_freedom=2, severity=DriftSeverity.HIGH,
+            feature_name="contract",
+            statistic=25.0,
+            p_value=0.001,
+            degrees_of_freedom=2,
+            severity=DriftSeverity.HIGH,
         )
         assert "χ²" in result.summary()
 
@@ -230,6 +261,7 @@ class TestChiSquareResult:
 # ---------------------------------------------------------------------------
 # DriftResult tests
 # ---------------------------------------------------------------------------
+
 
 class TestDriftResult:
     """Tests for the aggregate DriftResult."""
@@ -258,7 +290,9 @@ class TestDriftResult:
 
     def test_drifted_features(self):
         psi_r = PSIResult(feature_name="tenure", psi_value=0.3, severity=DriftSeverity.HIGH)
-        ks_r = KSTestResult(feature_name="tenure", statistic=0.2, p_value=0.001, severity=DriftSeverity.HIGH)
+        ks_r = KSTestResult(
+            feature_name="tenure", statistic=0.2, p_value=0.001, severity=DriftSeverity.HIGH
+        )
         result = DriftResult(
             timestamp="2025-01-01",
             psi_results=[psi_r],
@@ -272,6 +306,7 @@ class TestDriftResult:
 # ---------------------------------------------------------------------------
 # DataDriftDetector tests
 # ---------------------------------------------------------------------------
+
 
 class TestDataDriftDetector:
     """Tests for the DataDriftDetector class."""
@@ -288,7 +323,11 @@ class TestDataDriftDetector:
         detector = DataDriftDetector()
         result = detector.detect(reference_df, drifted_df)
         assert result.n_features_drifted > 0, "Should detect drift in drifted data"
-        assert result.overall_severity in (DriftSeverity.MEDIUM, DriftSeverity.HIGH, DriftSeverity.CRITICAL)
+        assert result.overall_severity in (
+            DriftSeverity.MEDIUM,
+            DriftSeverity.HIGH,
+            DriftSeverity.CRITICAL,
+        )
 
     def test_psi_results_populated(self, reference_df, drifted_df):
         """PSI results should be generated for numeric features."""

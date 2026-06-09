@@ -10,26 +10,19 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-import numpy as np
-import pandas as pd
-
+from churnguard.monitoring.alerts import AlertManager, AlertSeverity
 from churnguard.monitoring.drift import (
-    DataDriftDetector,
     DriftResult,
     DriftSeverity,
 )
 from churnguard.monitoring.performance import (
     PerformanceMonitor,
-    PerformanceSnapshot,
-    PerformanceAlert,
-    MetricHistory,
 )
-from churnguard.monitoring.alerts import AlertManager, Alert, AlertSeverity
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Report configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MonitoringReportConfig:
@@ -65,12 +59,13 @@ class MonitoringReportConfig:
 # Chart generation (inline SVG/HTML)
 # ---------------------------------------------------------------------------
 
+
 def _bar_chart_html(
-    labels: List[str],
-    values: List[float],
+    labels: list[str],
+    values: list[float],
     title: str,
     color: str = "#4CAF50",
-    threshold_line: Optional[float] = None,
+    threshold_line: float | None = None,
     threshold_label: str = "",
     width: int = 600,
     height: int = 300,
@@ -151,7 +146,7 @@ def _bar_chart_html(
         <line x1="{tx}" y1="15" x2="{tx}" y2="{height - margin_bottom}"
               stroke="#F44336" stroke-width="2" stroke-dasharray="5,3"/>
         <text x="{tx + 5}" y="12" font-size="10" fill="#F44336">
-            {threshold_label or f'Threshold: {threshold_line:.2f}'}
+            {threshold_label or f"Threshold: {threshold_line:.2f}"}
         </text>"""
 
     return f"""
@@ -165,8 +160,8 @@ def _bar_chart_html(
 
 
 def _line_chart_html(
-    series: Dict[str, List[float]],
-    x_labels: List[str],
+    series: dict[str, list[float]],
+    x_labels: list[str],
     title: str,
     y_label: str = "Value",
     width: int = 600,
@@ -320,6 +315,7 @@ def _alert_severity_badge(severity: AlertSeverity) -> str:
 # MonitoringReport
 # ---------------------------------------------------------------------------
 
+
 class MonitoringReport:
     """Generate HTML monitoring reports.
 
@@ -329,16 +325,16 @@ class MonitoringReport:
         Report configuration.
     """
 
-    def __init__(self, config: Optional[MonitoringReportConfig] = None) -> None:
+    def __init__(self, config: MonitoringReportConfig | None = None) -> None:
         self.config = config or MonitoringReportConfig()
 
     def generate(
         self,
-        drift_result: Optional[DriftResult] = None,
-        performance_monitor: Optional[PerformanceMonitor] = None,
-        alert_manager: Optional[AlertManager] = None,
-        concept_drift_results: Optional[Dict[str, Any]] = None,
-        output_path: Optional[Union[str, Path]] = None,
+        drift_result: DriftResult | None = None,
+        performance_monitor: PerformanceMonitor | None = None,
+        alert_manager: AlertManager | None = None,
+        concept_drift_results: dict[str, Any] | None = None,
+        output_path: str | Path | None = None,
     ) -> str:
         """Generate the HTML monitoring report.
 
@@ -400,15 +396,14 @@ class MonitoringReport:
 
     def _compute_overall_status(
         self,
-        drift_result: Optional[DriftResult],
-        performance_monitor: Optional[PerformanceMonitor],
-        alert_manager: Optional[AlertManager],
+        drift_result: DriftResult | None,
+        performance_monitor: PerformanceMonitor | None,
+        alert_manager: AlertManager | None,
     ) -> str:
         """Compute the overall health status."""
         if alert_manager and alert_manager.unacknowledged:
             critical = any(
-                a.severity == AlertSeverity.CRITICAL
-                for a in alert_manager.unacknowledged
+                a.severity == AlertSeverity.CRITICAL for a in alert_manager.unacknowledged
             )
             if critical:
                 return "CRITICAL"
@@ -434,8 +429,8 @@ class MonitoringReport:
         psi_values = [r.psi_value for r in result.psi_results]
         # Sort by PSI descending
         sorted_pairs = sorted(zip(psi_values, psi_labels), reverse=True)
-        psi_values_sorted = [p[0] for p in sorted_pairs[:self.config.max_features_per_chart]]
-        psi_labels_sorted = [p[1] for p in sorted_pairs[:self.config.max_features_per_chart]]
+        psi_values_sorted = [p[0] for p in sorted_pairs[: self.config.max_features_per_chart]]
+        psi_labels_sorted = [p[1] for p in sorted_pairs[: self.config.max_features_per_chart]]
 
         psi_chart = _bar_chart_html(
             labels=psi_labels_sorted,
@@ -451,8 +446,8 @@ class MonitoringReport:
         ks_pvalues = [r.p_value for r in result.ks_results]
         # Sort by p-value ascending (most significant first)
         sorted_ks = sorted(zip(ks_pvalues, ks_labels))
-        ks_values_sorted = [p[0] for p in sorted_ks[:self.config.max_features_per_chart]]
-        ks_labels_sorted = [p[1] for p in sorted_ks[:self.config.max_features_per_chart]]
+        ks_values_sorted = [p[0] for p in sorted_ks[: self.config.max_features_per_chart]]
+        ks_labels_sorted = [p[1] for p in sorted_ks[: self.config.max_features_per_chart]]
 
         ks_chart = _bar_chart_html(
             labels=ks_labels_sorted,
@@ -503,7 +498,7 @@ class MonitoringReport:
 
         # Build line chart for key metrics
         metrics_for_chart = ["f1", "roc_auc", "recall", "precision"]
-        series: Dict[str, List[float]] = {}
+        series: dict[str, list[float]] = {}
         for metric_name in metrics_for_chart:
             if metric_name in monitor.history:
                 hist = monitor.history[metric_name]
@@ -612,10 +607,10 @@ class MonitoringReport:
             </table>
         </section>"""
 
-    def _build_concept_drift_section(self, results: Dict[str, Any]) -> str:
+    def _build_concept_drift_section(self, results: dict[str, Any]) -> str:
         """Build the concept drift section HTML."""
         content = "<p>Concept drift detection results:</p>"
-        for detector_name, result in results.items():
+        for _detector_name, result in results.items():
             if hasattr(result, "summary"):
                 content += f"<p><code>{result.summary()}</code></p>"
             elif isinstance(result, dict):

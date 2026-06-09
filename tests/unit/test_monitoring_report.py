@@ -2,35 +2,33 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pytest
 
-from churnguard.monitoring.drift import (
-    DataDriftDetector,
-    DriftSeverity,
-)
 from churnguard.monitoring.alerts import (
     AlertManager,
     AlertRule,
     AlertSeverity,
 )
+from churnguard.monitoring.drift import (
+    DataDriftDetector,
+    DriftSeverity,
+)
 from churnguard.monitoring.performance import PerformanceMonitor
 from churnguard.monitoring.report import (
     MonitoringReport,
     MonitoringReportConfig,
+    _alert_severity_badge,
     _bar_chart_html,
     _line_chart_html,
     _severity_badge,
-    _alert_severity_badge,
 )
-
 
 # ---------------------------------------------------------------------------
 # Chart helper tests
 # ---------------------------------------------------------------------------
+
 
 class TestBarChart:
     """Tests for _bar_chart_html."""
@@ -118,6 +116,7 @@ class TestSeverityBadge:
 # MonitoringReportConfig tests
 # ---------------------------------------------------------------------------
 
+
 class TestMonitoringReportConfig:
     """Tests for MonitoringReportConfig."""
 
@@ -137,6 +136,7 @@ class TestMonitoringReportConfig:
 # MonitoringReport tests
 # ---------------------------------------------------------------------------
 
+
 class TestMonitoringReport:
     """Tests for MonitoringReport."""
 
@@ -144,14 +144,18 @@ class TestMonitoringReport:
     def drift_result(self):
         """Create a sample drift result."""
         np.random.seed(42)
-        ref = pd.DataFrame({
-            "tenure": np.random.exponential(30, 300),
-            "charges": np.random.normal(65, 15, 300),
-        })
-        cur = pd.DataFrame({
-            "tenure": np.random.exponential(30, 300),
-            "charges": np.random.normal(65, 15, 300),
-        })
+        ref = pd.DataFrame(
+            {
+                "tenure": np.random.exponential(30, 300),
+                "charges": np.random.normal(65, 15, 300),
+            }
+        )
+        cur = pd.DataFrame(
+            {
+                "tenure": np.random.exponential(30, 300),
+                "charges": np.random.normal(65, 15, 300),
+            }
+        )
         detector = DataDriftDetector()
         return detector.detect(ref, cur)
 
@@ -228,7 +232,7 @@ class TestMonitoringReport:
         """Report should be saved to a file."""
         report = MonitoringReport()
         path = tmp_path / "report.html"
-        html = report.generate(drift_result=drift_result, output_path=path)
+        report.generate(drift_result=drift_result, output_path=path)
         assert path.exists()
         content = path.read_text()
         assert "<!DOCTYPE html>" in content
@@ -237,7 +241,7 @@ class TestMonitoringReport:
         """Saving should create parent directories."""
         report = MonitoringReport()
         path = tmp_path / "sub" / "dir" / "report.html"
-        html = report.generate(output_path=path)
+        report.generate(output_path=path)
         assert path.exists()
 
     def test_overall_status_healthy(self, drift_result):
@@ -288,6 +292,7 @@ class TestMonitoringReport:
     def test_concept_drift_section(self):
         """Report should include concept drift section when data provided."""
         from churnguard.monitoring.concept import ADWIN
+
         adwin = ADWIN()
         # Simulate some data
         for _ in range(50):

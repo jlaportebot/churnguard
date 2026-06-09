@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class AlertSeverity(str, Enum):
     """Alert severity level."""
@@ -36,6 +37,7 @@ class AlertSeverity(str, Enum):
 # ---------------------------------------------------------------------------
 # Alert data
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Alert:
@@ -62,7 +64,7 @@ class Alert:
     current_value: float
     threshold: float
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     acknowledged: bool = False
 
     def summary(self) -> str:
@@ -73,7 +75,7 @@ class Alert:
             f"(threshold={self.threshold:.4f}) — {self.message}"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "alert_id": self.alert_id,
@@ -96,6 +98,7 @@ class Alert:
 # ---------------------------------------------------------------------------
 # Alert rules
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AlertRule:
@@ -159,7 +162,7 @@ class AlertRule:
             value=value,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "name": self.name,
@@ -175,6 +178,7 @@ class AlertRule:
 # ---------------------------------------------------------------------------
 # Alert actions
 # ---------------------------------------------------------------------------
+
 
 class AlertAction(ABC):
     """Abstract base class for alert actions.
@@ -207,7 +211,7 @@ class LogAlertAction(AlertAction):
 class FileAlertAction(AlertAction):
     """Append the alert to a JSONL file."""
 
-    def __init__(self, path: Union[str, Path]) -> None:
+    def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -233,6 +237,7 @@ class CallbackAlertAction(AlertAction):
 # AlertManager
 # ---------------------------------------------------------------------------
 
+
 class AlertManager:
     """Manage alert rules, dispatch actions, and track alert history.
 
@@ -248,15 +253,15 @@ class AlertManager:
 
     def __init__(
         self,
-        rules: Optional[List[AlertRule]] = None,
-        actions: Optional[List[AlertAction]] = None,
+        rules: list[AlertRule] | None = None,
+        actions: list[AlertAction] | None = None,
         max_history: int = 1000,
     ) -> None:
-        self._rules: Dict[str, AlertRule] = {}
-        self._actions: List[AlertAction] = actions or [LogAlertAction()]
-        self._rule_actions: Dict[str, List[AlertAction]] = {}
-        self._history: List[Alert] = []
-        self._last_fired: Dict[str, str] = {}  # rule_name → last timestamp
+        self._rules: dict[str, AlertRule] = {}
+        self._actions: list[AlertAction] = actions or [LogAlertAction()]
+        self._rule_actions: dict[str, list[AlertAction]] = {}
+        self._history: list[Alert] = []
+        self._last_fired: dict[str, str] = {}  # rule_name → last timestamp
         self._alert_counter = 0
         self.max_history = max_history
 
@@ -285,7 +290,7 @@ class AlertManager:
         self._rules.pop(rule_name, None)
         self._rule_actions.pop(rule_name, None)
 
-    def add_action(self, action: AlertAction, rule_name: Optional[str] = None) -> None:
+    def add_action(self, action: AlertAction, rule_name: str | None = None) -> None:
         """Add an alert action.
 
         Parameters
@@ -305,9 +310,9 @@ class AlertManager:
 
     def check(
         self,
-        metrics: Dict[str, float],
-        timestamp: Optional[str] = None,
-    ) -> List[Alert]:
+        metrics: dict[str, float],
+        timestamp: str | None = None,
+    ) -> list[Alert]:
         """Check all rules against current metric values.
 
         Parameters
@@ -325,7 +330,7 @@ class AlertManager:
         if timestamp is None:
             timestamp = datetime.now(timezone.utc).isoformat()
 
-        new_alerts: List[Alert] = []
+        new_alerts: list[Alert] = []
 
         for rule_name, rule in self._rules.items():
             if not rule.enabled:
@@ -367,7 +372,7 @@ class AlertManager:
 
         # Trim history
         if len(self._history) > self.max_history:
-            self._history = self._history[-self.max_history:]
+            self._history = self._history[-self.max_history :]
 
         return new_alerts
 
@@ -388,17 +393,17 @@ class AlertManager:
                 logger.error("Rule action failed: %s", e)
 
     @property
-    def history(self) -> List[Alert]:
+    def history(self) -> list[Alert]:
         """All alerts in history."""
         return self._history
 
     @property
-    def unacknowledged(self) -> List[Alert]:
+    def unacknowledged(self) -> list[Alert]:
         """All unacknowledged alerts."""
         return [a for a in self._history if not a.acknowledged]
 
     @property
-    def rules(self) -> Dict[str, AlertRule]:
+    def rules(self) -> dict[str, AlertRule]:
         """Current alert rules."""
         return self._rules
 
@@ -424,7 +429,7 @@ class AlertManager:
         n_critical = sum(1 for a in self._history if a.severity == AlertSeverity.CRITICAL)
 
         lines = [
-            f"=== Alert Manager ===",
+            "=== Alert Manager ===",
             f"Rules: {len(self._rules)}",
             f"Total alerts: {n_total}",
             f"Unacknowledged: {n_unack}",
@@ -452,7 +457,7 @@ class AlertManager:
 # Default alert rules for churn monitoring
 # ---------------------------------------------------------------------------
 
-DEFAULT_CHURN_ALERT_RULES: List[AlertRule] = [
+DEFAULT_CHURN_ALERT_RULES: list[AlertRule] = [
     AlertRule(
         name="f1_degradation_warning",
         metric_name="f1",

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from churnguard.monitoring.alerts import (
+    DEFAULT_CHURN_ALERT_RULES,
     Alert,
     AlertAction,
     AlertManager,
@@ -17,13 +16,12 @@ from churnguard.monitoring.alerts import (
     CallbackAlertAction,
     FileAlertAction,
     LogAlertAction,
-    DEFAULT_CHURN_ALERT_RULES,
 )
-
 
 # ---------------------------------------------------------------------------
 # AlertSeverity tests
 # ---------------------------------------------------------------------------
+
 
 class TestAlertSeverity:
     """Tests for AlertSeverity enum."""
@@ -40,6 +38,7 @@ class TestAlertSeverity:
 # ---------------------------------------------------------------------------
 # Alert tests
 # ---------------------------------------------------------------------------
+
 
 class TestAlert:
     """Tests for Alert data class."""
@@ -94,6 +93,7 @@ class TestAlert:
 # AlertRule tests
 # ---------------------------------------------------------------------------
 
+
 class TestAlertRule:
     """Tests for AlertRule data class."""
 
@@ -123,7 +123,9 @@ class TestAlertRule:
         assert rule.check(0.6) is False
 
     def test_check_disabled(self):
-        rule = AlertRule(name="test", metric_name="f1", condition="lt", threshold=0.5, enabled=False)
+        rule = AlertRule(
+            name="test", metric_name="f1", condition="lt", threshold=0.5, enabled=False
+        )
         assert rule.check(0.3) is False
 
     def test_unknown_condition(self):
@@ -132,7 +134,9 @@ class TestAlertRule:
 
     def test_format_message(self):
         rule = AlertRule(
-            name="test", metric_name="f1", condition="lt",
+            name="test",
+            metric_name="f1",
+            condition="lt",
             threshold=0.5,
             message="{metric} is {condition} {threshold} (current: {value})",
         )
@@ -142,8 +146,11 @@ class TestAlertRule:
 
     def test_to_dict(self):
         rule = AlertRule(
-            name="test", metric_name="f1", condition="lt",
-            threshold=0.5, severity=AlertSeverity.CRITICAL,
+            name="test",
+            metric_name="f1",
+            condition="lt",
+            threshold=0.5,
+            severity=AlertSeverity.CRITICAL,
         )
         d = rule.to_dict()
         assert d["name"] == "test"
@@ -154,15 +161,21 @@ class TestAlertRule:
 # AlertAction tests
 # ---------------------------------------------------------------------------
 
+
 class TestLogAlertAction:
     """Tests for LogAlertAction."""
 
     def test_execute(self):
         action = LogAlertAction(log_level="WARNING")
         alert = Alert(
-            alert_id="a1", timestamp="t", rule_name="r",
-            severity=AlertSeverity.WARNING, metric_name="f1",
-            current_value=0.3, threshold=0.6, message="msg",
+            alert_id="a1",
+            timestamp="t",
+            rule_name="r",
+            severity=AlertSeverity.WARNING,
+            metric_name="f1",
+            current_value=0.3,
+            threshold=0.6,
+            message="msg",
         )
         # Should not raise
         action.execute(alert)
@@ -175,9 +188,14 @@ class TestFileAlertAction:
         path = tmp_path / "alerts.jsonl"
         action = FileAlertAction(path)
         alert = Alert(
-            alert_id="a1", timestamp="2025-01-01", rule_name="r",
-            severity=AlertSeverity.WARNING, metric_name="f1",
-            current_value=0.3, threshold=0.6, message="msg",
+            alert_id="a1",
+            timestamp="2025-01-01",
+            rule_name="r",
+            severity=AlertSeverity.WARNING,
+            metric_name="f1",
+            current_value=0.3,
+            threshold=0.6,
+            message="msg",
         )
         action.execute(alert)
         assert path.exists()
@@ -189,9 +207,14 @@ class TestFileAlertAction:
         path = tmp_path / "sub" / "dir" / "alerts.jsonl"
         action = FileAlertAction(path)
         alert = Alert(
-            alert_id="a1", timestamp="t", rule_name="r",
-            severity=AlertSeverity.INFO, metric_name="x",
-            current_value=1.0, threshold=0.5, message="m",
+            alert_id="a1",
+            timestamp="t",
+            rule_name="r",
+            severity=AlertSeverity.INFO,
+            metric_name="x",
+            current_value=1.0,
+            threshold=0.5,
+            message="m",
         )
         action.execute(alert)
         assert path.exists()
@@ -204,9 +227,14 @@ class TestCallbackAlertAction:
         received = []
         action = CallbackAlertAction(callback=lambda a: received.append(a))
         alert = Alert(
-            alert_id="a1", timestamp="t", rule_name="r",
-            severity=AlertSeverity.WARNING, metric_name="f1",
-            current_value=0.3, threshold=0.6, message="msg",
+            alert_id="a1",
+            timestamp="t",
+            rule_name="r",
+            severity=AlertSeverity.WARNING,
+            metric_name="f1",
+            current_value=0.3,
+            threshold=0.6,
+            message="msg",
         )
         action.execute(alert)
         assert len(received) == 1
@@ -215,9 +243,14 @@ class TestCallbackAlertAction:
         """Callback exceptions should be caught gracefully."""
         action = CallbackAlertAction(callback=lambda a: 1 / 0)
         alert = Alert(
-            alert_id="a1", timestamp="t", rule_name="r",
-            severity=AlertSeverity.WARNING, metric_name="f1",
-            current_value=0.3, threshold=0.6, message="msg",
+            alert_id="a1",
+            timestamp="t",
+            rule_name="r",
+            severity=AlertSeverity.WARNING,
+            metric_name="f1",
+            current_value=0.3,
+            threshold=0.6,
+            message="msg",
         )
         # Should not raise
         action.execute(alert)
@@ -234,6 +267,7 @@ class TestAlertActionABC:
 # ---------------------------------------------------------------------------
 # AlertManager tests
 # ---------------------------------------------------------------------------
+
 
 class TestAlertManager:
     """Tests for AlertManager."""
@@ -357,7 +391,7 @@ class TestAlertManager:
             cooldown_minutes=0,
         )
         mgr = AlertManager(rules=[rule], max_history=5)
-        for i in range(10):
+        for _i in range(10):
             mgr.check({"f1": 0.3})
         assert len(mgr.history) == 5
 
@@ -394,6 +428,7 @@ class TestAlertManager:
 # ---------------------------------------------------------------------------
 # Default alert rules tests
 # ---------------------------------------------------------------------------
+
 
 class TestDefaultChurnAlertRules:
     """Tests for DEFAULT_CHURN_ALERT_RULES."""

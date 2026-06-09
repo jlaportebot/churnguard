@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -57,10 +57,10 @@ class ModelResult:
     f1: float = 0.0
     roc_auc: float = 0.0
     pr_auc: float = 0.0
-    confusion_matrix: Optional[np.ndarray] = None
+    confusion_matrix: np.ndarray | None = None
     feature_importance: dict[str, float] = field(default_factory=dict)
-    y_pred: Optional[np.ndarray] = None
-    y_proba: Optional[np.ndarray] = None
+    y_pred: np.ndarray | None = None
+    y_proba: np.ndarray | None = None
     training_time_seconds: float = 0.0
     best_params: dict[str, Any] = field(default_factory=dict)
     cv_scores: list[float] = field(default_factory=list)
@@ -132,7 +132,7 @@ class ChurnModel(ABC):
         self.tune_hyperparams = tune_hyperparams
         self.n_tuning_trials = n_tuning_trials
         self.cv_folds = cv_folds
-        self._model: Optional[BaseEstimator] = None
+        self._model: BaseEstimator | None = None
         self._is_fitted = False
 
     @property
@@ -245,7 +245,7 @@ class ChurnModel(ABC):
         self,
         X_test: pd.DataFrame,
         y_test: pd.Series,
-        feature_names: Optional[list[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> ModelResult:
         """Evaluate the model on test data.
 
@@ -304,9 +304,7 @@ class ChurnModel(ABC):
 
         return result
 
-    def _get_feature_importance(
-        self, feature_names: Optional[list[str]] = None
-    ) -> dict[str, float]:
+    def _get_feature_importance(self, feature_names: list[str] | None = None) -> dict[str, float]:
         """Extract feature importance from the fitted model."""
         importances = None
 

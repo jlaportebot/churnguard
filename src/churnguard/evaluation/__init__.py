@@ -5,20 +5,13 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
-    accuracy_score,
-    average_precision_score,
     classification_report,
-    confusion_matrix,
-    f1_score,
     precision_recall_curve,
-    precision_score,
-    recall_score,
-    roc_auc_score,
     roc_curve,
 )
 
@@ -46,7 +39,7 @@ class ModelEvaluator:
 
     def __init__(
         self,
-        output_dir: Optional[str | Path] = None,
+        output_dir: str | Path | None = None,
         save_plots: bool = True,
         save_json: bool = True,
         plot_format: str = "png",
@@ -136,7 +129,7 @@ class ModelEvaluator:
     def compare_models(
         self,
         results: dict[str, ModelResult],
-        y_test: Optional[pd.Series] = None,
+        y_test: pd.Series | None = None,
     ) -> pd.DataFrame:
         """Compare multiple models and generate comparison plots.
 
@@ -153,7 +146,7 @@ class ModelEvaluator:
             Comparison table.
         """
         rows = []
-        for name, result in results.items():
+        for _name, result in results.items():
             rows.append(result.to_dict())
 
         df = pd.DataFrame(rows)
@@ -165,7 +158,7 @@ class ModelEvaluator:
 
         return df
 
-    def _plot_confusion_matrix(self, result: ModelResult) -> Optional[Path]:
+    def _plot_confusion_matrix(self, result: ModelResult) -> Path | None:
         """Plot confusion matrix."""
         if result.confusion_matrix is None:
             return None
@@ -200,7 +193,7 @@ class ModelEvaluator:
         plt.close(fig)
         return path
 
-    def _plot_roc_curve(self, result: ModelResult, y_test: pd.Series) -> Optional[Path]:
+    def _plot_roc_curve(self, result: ModelResult, y_test: pd.Series) -> Path | None:
         """Plot ROC curve."""
         if result.y_proba is None:
             return None
@@ -231,7 +224,7 @@ class ModelEvaluator:
         plt.close(fig)
         return path
 
-    def _plot_pr_curve(self, result: ModelResult, y_test: pd.Series) -> Optional[Path]:
+    def _plot_pr_curve(self, result: ModelResult, y_test: pd.Series) -> Path | None:
         """Plot Precision-Recall curve."""
         if result.y_proba is None:
             return None
@@ -260,7 +253,7 @@ class ModelEvaluator:
         plt.close(fig)
         return path
 
-    def _plot_feature_importance(self, result: ModelResult) -> Optional[Path]:
+    def _plot_feature_importance(self, result: ModelResult) -> Path | None:
         """Plot top feature importances."""
         if not result.feature_importance:
             return None
@@ -293,7 +286,7 @@ class ModelEvaluator:
         plt.close(fig)
         return path
 
-    def _plot_risk_distribution(self, result: ModelResult) -> Optional[Path]:
+    def _plot_risk_distribution(self, result: ModelResult) -> Path | None:
         """Plot churn risk distribution."""
         if result.y_proba is None:
             return None
@@ -321,7 +314,7 @@ class ModelEvaluator:
         plt.close(fig)
         return path
 
-    def _plot_model_comparison(self, results: dict[str, ModelResult]) -> Optional[Path]:
+    def _plot_model_comparison(self, results: dict[str, ModelResult]) -> Path | None:
         """Plot model comparison bar chart."""
         if not results:
             return None

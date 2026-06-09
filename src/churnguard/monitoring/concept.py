@@ -19,7 +19,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
+
 
 class DriftState(str, Enum):
     """State of the concept drift detector."""
@@ -63,7 +64,7 @@ class ConceptDriftResult:
     n_samples: int = 0
     n_warnings: int = 0
     n_drifts: int = 0
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> str:
         """Human-readable summary."""
@@ -74,7 +75,7 @@ class ConceptDriftResult:
             f"drifts={self.n_drifts}"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "state": self.state.value,
@@ -91,6 +92,7 @@ class ConceptDriftResult:
 # ---------------------------------------------------------------------------
 # Abstract base
 # ---------------------------------------------------------------------------
+
 
 class ConceptDriftDetector(ABC):
     """Abstract base class for concept drift detectors.
@@ -130,9 +132,7 @@ class ConceptDriftDetector(ABC):
     def reset(self) -> None:
         """Reset the detector to its initial state."""
 
-    def update_batch(
-        self, predictions: np.ndarray, labels: np.ndarray
-    ) -> List[ConceptDriftResult]:
+    def update_batch(self, predictions: np.ndarray, labels: np.ndarray) -> list[ConceptDriftResult]:
         """Process a batch of prediction-label pairs.
 
         Parameters
@@ -156,6 +156,7 @@ class ConceptDriftDetector(ABC):
 # ---------------------------------------------------------------------------
 # ADWIN (Adaptive Windowing)
 # ---------------------------------------------------------------------------
+
 
 class ADWIN(ConceptDriftDetector):
     """ADaptive WINdowing drift detector.
@@ -181,7 +182,7 @@ class ADWIN(ConceptDriftDetector):
     ) -> None:
         self.delta = delta
         self.min_window_size = min_window_size
-        self._window: List[float] = []
+        self._window: list[float] = []
         self._n_samples = 0
         self._n_warnings = 0
         self._n_drifts = 0
@@ -230,9 +231,7 @@ class ADWIN(ConceptDriftDetector):
                 mid = n // 2
                 mean_0 = np.mean(self._window[:mid])
                 mean_1 = np.mean(self._window[mid:])
-                epsilon = self._hoeffding_bound(
-                    self.delta * 2, mid, n - mid
-                )
+                epsilon = self._hoeffding_bound(self.delta * 2, mid, n - mid)
                 if abs(mean_0 - mean_1) > epsilon * 0.7:
                     self._n_warnings += 1
                     self._last_state = DriftState.WARNING
@@ -319,6 +318,7 @@ class ADWIN(ConceptDriftDetector):
 # DDM (Drift Detection Method)
 # ---------------------------------------------------------------------------
 
+
 class DDM(ConceptDriftDetector):
     """Drift Detection Method.
 
@@ -351,8 +351,8 @@ class DDM(ConceptDriftDetector):
         self.min_samples = min_samples
         self._n_samples = 0
         self._n_errors = 0
-        self._p_min: Optional[float] = None
-        self._s_min: Optional[float] = None
+        self._p_min: float | None = None
+        self._s_min: float | None = None
         self._n_warnings = 0
         self._n_drifts = 0
         self._last_state = DriftState.STABLE
@@ -435,6 +435,7 @@ class DDM(ConceptDriftDetector):
 # EDDM (Early Drift Detection Method)
 # ---------------------------------------------------------------------------
 
+
 class EDDM(ConceptDriftDetector):
     """Early Drift Detection Method.
 
@@ -469,10 +470,10 @@ class EDDM(ConceptDriftDetector):
         self.min_samples = min_samples
         self._n_samples = 0
         self._n_errors = 0
-        self._last_error_index: Optional[int] = None
-        self._distances: List[float] = []
-        self._p_prime_max: Optional[float] = None
-        self._s_prime_max: Optional[float] = None
+        self._last_error_index: int | None = None
+        self._distances: list[float] = []
+        self._p_prime_max: float | None = None
+        self._s_prime_max: float | None = None
         self._n_warnings = 0
         self._n_drifts = 0
         self._last_state = DriftState.STABLE
@@ -548,7 +549,9 @@ class EDDM(ConceptDriftDetector):
             n_drifts=self._n_drifts,
             details={
                 "n_errors": self._n_errors,
-                "mean_distance": round(float(np.mean(self._distances)), 4) if self._distances else None,
+                "mean_distance": round(float(np.mean(self._distances)), 4)
+                if self._distances
+                else None,
                 "alpha": self.alpha,
                 "beta": self.beta,
             },

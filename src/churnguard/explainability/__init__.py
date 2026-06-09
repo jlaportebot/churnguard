@@ -11,8 +11,8 @@ Requires the ``shap`` package (install with: ``pip install shap``).
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ def _get_shap():
             raise ImportError(
                 "The 'shap' package is required for explainability. "
                 "Install it with: pip install shap"
-            )
+            ) from None
     return _shap
 
 
@@ -59,10 +59,10 @@ class CustomerExplanation:
     customer_index: int
     base_value: float
     shap_values: np.ndarray
-    feature_names: List[str]
+    feature_names: list[str]
     predicted_probability: float
 
-    def top_features(self, k: int = 5) -> List[Tuple[str, float]]:
+    def top_features(self, k: int = 5) -> list[tuple[str, float]]:
         """Return the top-k features by absolute SHAP value.
 
         Parameters
@@ -78,7 +78,7 @@ class CustomerExplanation:
         top_indices = np.argsort(abs_vals)[::-1][:k]
         return [(self.feature_names[i], float(self.shap_values[i])) for i in top_indices]
 
-    def risk_drivers(self, k: int = 5) -> List[Tuple[str, float]]:
+    def risk_drivers(self, k: int = 5) -> list[tuple[str, float]]:
         """Return the top-k features that *increase* churn risk (positive SHAP).
 
         Parameters
@@ -102,7 +102,7 @@ class CustomerExplanation:
         sorted_idx = np.argsort(positive_vals)[::-1][:k]
         return [(positive_names[i], float(positive_vals[i])) for i in sorted_idx]
 
-    def protective_factors(self, k: int = 5) -> List[Tuple[str, float]]:
+    def protective_factors(self, k: int = 5) -> list[tuple[str, float]]:
         """Return the top-k features that *decrease* churn risk (negative SHAP).
 
         Parameters
@@ -156,12 +156,12 @@ class GlobalExplanation:
         base_value: Expected model output.
     """
 
-    feature_names: List[str]
+    feature_names: list[str]
     mean_abs_shap: np.ndarray
     shap_values: np.ndarray
     base_value: float
 
-    def top_features(self, k: int = 10) -> List[Tuple[str, float]]:
+    def top_features(self, k: int = 10) -> list[tuple[str, float]]:
         """Return top-k features by mean absolute SHAP value.
 
         Parameters
@@ -224,7 +224,7 @@ class ChurnExplainer:
     def __init__(
         self,
         model: Any = None,
-        background_data: Optional[pd.DataFrame] = None,
+        background_data: pd.DataFrame | None = None,
         n_background_samples: int = 100,
         explainer_type: str = "auto",
     ) -> None:
@@ -233,14 +233,14 @@ class ChurnExplainer:
         self.n_background_samples = n_background_samples
         self.explainer_type = explainer_type
         self._explainer = None
-        self._feature_names: List[str] = []
+        self._feature_names: list[str] = []
         self._is_fitted = False
 
     def fit(
         self,
         X: pd.DataFrame,
         model: Any = None,
-        feature_names: Optional[List[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> ChurnExplainer:
         """Fit the explainer on training data.
 
@@ -360,19 +360,13 @@ class ChurnExplainer:
             raise RuntimeError("Explainer must be fitted first. Call fit().")
 
         # Get SHAP values for just this customer
-        if hasattr(X, "iloc"):
-            single = X.iloc[[customer_index]]
-        else:
-            single = X[[customer_index]]
+        single = X.iloc[[customer_index]] if hasattr(X, "iloc") else X[[customer_index]]
 
         shap_values = self._compute_shap_values(single)
         sv = self._extract_positive_class_shap(shap_values)
 
         # Get the single-customer row
-        if sv.ndim >= 2:
-            sv_row = sv[0].flatten()
-        else:
-            sv_row = np.array(sv).flatten()
+        sv_row = sv[0].flatten() if sv.ndim >= 2 else np.array(sv).flatten()
 
         base_value = float(self._get_base_value())
 
@@ -397,10 +391,7 @@ class ChurnExplainer:
             self._explainer, "tree_limit"
         ):
             # KernelExplainer — limit to 200 samples for speed
-            if hasattr(X, "iloc") and len(X) > 200:
-                X_sample = X.iloc[:200]
-            else:
-                X_sample = X
+            X_sample = X.iloc[:200] if hasattr(X, "iloc") and len(X) > 200 else X
         else:
             X_sample = X
 
@@ -409,10 +400,7 @@ class ChurnExplainer:
         except Exception as e:
             logger.warning("SHAP computation failed: %s. Trying with smaller sample.", e)
             # Fallback: use even smaller sample
-            if hasattr(X, "iloc"):
-                small = X.iloc[:50]
-            else:
-                small = X[:50]
+            small = X.iloc[:50] if hasattr(X, "iloc") else X[:50]
             return self._explainer.shap_values(small)
 
     def _extract_positive_class_shap(self, shap_values: Any) -> np.ndarray:
@@ -426,11 +414,7 @@ class ChurnExplainer:
             sv = shap_values[1] if len(shap_values) > 1 else shap_values[0]
             return np.array(sv)
 
-        if hasattr(shap_values, "values"):
-            # Explanation object
-            sv = shap_values.values
-        else:
-            sv = np.array(shap_values)
+        sv = shap_values.values if hasattr(shap_values, "values") else np.array(shap_values)
 
         # 3D array: (n_samples, n_features, n_classes) → take positive class
         if sv.ndim == 3 and sv.shape[2] >= 2:

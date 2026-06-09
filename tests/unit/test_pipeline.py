@@ -227,7 +227,7 @@ class TestChurnPipeline:
             save_plots=False,
         )
         pipeline = ChurnPipeline(config=config)
-        result = pipeline.run(sample_csv, target="churn")
+        pipeline.run(sample_csv, target="churn")
 
         report_path = out_dir / "pipeline_report.json"
         assert report_path.exists()
@@ -240,7 +240,7 @@ class TestChurnPipeline:
             save_plots=False,
         )
         pipeline = ChurnPipeline(config=config)
-        result = pipeline.run(sample_csv, target="churn")
+        pipeline.run(sample_csv, target="churn")
 
         comparison_path = out_dir / "model_comparison.csv"
         assert comparison_path.exists()
