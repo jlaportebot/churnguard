@@ -45,21 +45,25 @@ class TestFeatureEngineer:
 
     def test_numeric_imputation(self):
         """Test that NaN values in numeric columns are imputed."""
-        df = pd.DataFrame({
-            "a": [1.0, np.nan, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
-            "b": [10.0, 20.0, np.nan, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
-            "cat": ["x", "y", "x", "y", "x", "y", "x", "y", "x", "y"],
-        })
+        df = pd.DataFrame(
+            {
+                "a": [1.0, np.nan, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+                "b": [10.0, 20.0, np.nan, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
+                "cat": ["x", "y", "x", "y", "x", "y", "x", "y", "x", "y"],
+            }
+        )
         engineer = FeatureEngineer(numeric_impute_strategy="median")
         result = engineer.fit_transform(df)
         assert not result.isnull().any().any()
 
     def test_categorical_encoding(self):
         """Test one-hot encoding of categorical columns."""
-        df = pd.DataFrame({
-            "num": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "cat": ["a", "b", "a", "b", "a", "b", "a", "b", "a", "b"],
-        })
+        df = pd.DataFrame(
+            {
+                "num": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "cat": ["a", "b", "a", "b", "a", "b", "a", "b", "a", "b"],
+            }
+        )
         engineer = FeatureEngineer()
         result = engineer.fit_transform(df)
         # "cat" has 2 unique values, one-hot with drop="if_binary" → 1 column
@@ -91,10 +95,12 @@ class TestFeatureEngineer:
 
     def test_frequency_encoding(self):
         """Test frequency encoding for high-cardinality columns."""
-        df = pd.DataFrame({
-            "num": range(100),
-            "high_card": [f"val_{i % 25}" for i in range(100)],
-        })
+        df = pd.DataFrame(
+            {
+                "num": range(100),
+                "high_card": [f"val_{i % 25}" for i in range(100)],
+            }
+        )
         engineer = FeatureEngineer(categorical_max_cardinality=10)
         result = engineer.fit_transform(df)
         assert isinstance(result, pd.DataFrame)
@@ -156,12 +162,14 @@ class TestFeatureSelector:
     def sample_data(self):
         """Create sample numeric data."""
         np.random.seed(42)
-        return pd.DataFrame({
-            "useful": np.random.randn(100),
-            "also_useful": np.random.randn(100),
-            "constant": np.zeros(100),  # Zero variance
-            "near_constant": np.ones(100) * 0.001,  # Near-zero variance
-        })
+        return pd.DataFrame(
+            {
+                "useful": np.random.randn(100),
+                "also_useful": np.random.randn(100),
+                "constant": np.zeros(100),  # Zero variance
+                "near_constant": np.ones(100) * 0.001,  # Near-zero variance
+            }
+        )
 
     def test_variance_selection(self, sample_data):
         """Test variance-based feature selection."""
@@ -188,10 +196,12 @@ class TestFeatureSelector:
     def test_correlation_selection(self):
         """Test correlation-based feature selection."""
         np.random.seed(42)
-        X = pd.DataFrame({
-            "good": np.random.randn(100),
-            "bad": np.random.randn(100) * 0.01,
-        })
+        X = pd.DataFrame(
+            {
+                "good": np.random.randn(100),
+                "bad": np.random.randn(100) * 0.01,
+            }
+        )
         y = pd.Series(np.random.randint(0, 2, 100))
         # Make 'good' correlated with y
         X["good"] = X["good"] + y * 2

@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # Cost matrix
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CostMatrix:
     """Business cost matrix for churn decisions.
@@ -70,12 +71,7 @@ class CostMatrix:
         float
             Net business value.
         """
-        return (
-            tp * self.tp_benefit
-            - fp * self.fp_cost
-            - fn * self.fn_cost
-            + tn * self.tn_benefit
-        )
+        return tp * self.tp_benefit - fp * self.fp_cost - fn * self.fn_cost + tn * self.tn_benefit
 
     def to_dict(self) -> Dict[str, float]:
         """Serialize cost matrix to dict."""
@@ -90,6 +86,7 @@ class CostMatrix:
 # ---------------------------------------------------------------------------
 # Threshold result
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ThresholdResult:
@@ -135,6 +132,7 @@ class ThresholdResult:
 # Optimization functions
 # ---------------------------------------------------------------------------
 
+
 def _scan_thresholds(
     y_true: np.ndarray,
     y_proba: np.ndarray,
@@ -165,13 +163,15 @@ def _scan_thresholds(
         y_pred = (y_proba >= t).astype(int)
         # Handle edge case where all predictions are the same class
         n_unique = len(np.unique(y_pred))
-        metrics_list.append({
-            "accuracy": accuracy_score(y_true, y_pred),
-            "precision": precision_score(y_true, y_pred, zero_division=0),
-            "recall": recall_score(y_true, y_pred, zero_division=0),
-            "f1": f1_score(y_true, y_pred, zero_division=0),
-            "threshold": float(t),
-        })
+        metrics_list.append(
+            {
+                "accuracy": accuracy_score(y_true, y_pred),
+                "precision": precision_score(y_true, y_pred, zero_division=0),
+                "recall": recall_score(y_true, y_pred, zero_division=0),
+                "f1": f1_score(y_true, y_pred, zero_division=0),
+                "threshold": float(t),
+            }
+        )
 
     return thresholds, metrics_list
 
@@ -341,18 +341,14 @@ def optimize_precision_recall(
     thresholds, metrics_list = _scan_thresholds(y_true, y_proba, n_thresholds)
 
     # Filter to thresholds that meet the precision target
-    valid_indices = [
-        i for i, m in enumerate(metrics_list)
-        if m["precision"] >= target_precision
-    ]
+    valid_indices = [i for i, m in enumerate(metrics_list) if m["precision"] >= target_precision]
 
     if not valid_indices:
         # Fall back to the threshold with highest precision
         precisions = np.array([m["precision"] for m in metrics_list])
         best_idx = int(np.argmax(precisions))
         logger.warning(
-            "No threshold achieves target precision %.2f. "
-            "Best precision: %.4f at threshold %.4f",
+            "No threshold achieves target precision %.2f. Best precision: %.4f at threshold %.4f",
             target_precision,
             precisions[best_idx],
             thresholds[best_idx],
@@ -430,6 +426,7 @@ def find_threshold_for_target_rate(
 # ---------------------------------------------------------------------------
 # Convenience entry point
 # ---------------------------------------------------------------------------
+
 
 def optimize_threshold(
     y_true: np.ndarray,
@@ -521,7 +518,7 @@ class ThresholdOptimizer:
         strategy: str = "f1",
         cost_matrix: Optional[CostMatrix] = None,
         target_precision: float = 0.7,
-    ) -> "ThresholdResult":
+    ) -> ThresholdResult:
         """Find the optimal decision threshold.
 
         Parameters

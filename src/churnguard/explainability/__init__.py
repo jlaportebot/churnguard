@@ -29,6 +29,7 @@ def _get_shap():
     if _shap is None:
         try:
             import shap as _shap_module
+
             _shap = _shap_module
         except ImportError:
             raise ImportError(
@@ -41,6 +42,7 @@ def _get_shap():
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CustomerExplanation:
@@ -74,10 +76,7 @@ class CustomerExplanation:
         """
         abs_vals = np.abs(self.shap_values)
         top_indices = np.argsort(abs_vals)[::-1][:k]
-        return [
-            (self.feature_names[i], float(self.shap_values[i]))
-            for i in top_indices
-        ]
+        return [(self.feature_names[i], float(self.shap_values[i])) for i in top_indices]
 
     def risk_drivers(self, k: int = 5) -> List[Tuple[str, float]]:
         """Return the top-k features that *increase* churn risk (positive SHAP).
@@ -93,16 +92,15 @@ class CustomerExplanation:
         """
         positive_mask = self.shap_values > 0
         positive_vals = self.shap_values[positive_mask]
-        positive_names = [self.feature_names[i] for i in range(len(self.feature_names)) if positive_mask[i]]
+        positive_names = [
+            self.feature_names[i] for i in range(len(self.feature_names)) if positive_mask[i]
+        ]
 
         if len(positive_vals) == 0:
             return []
 
         sorted_idx = np.argsort(positive_vals)[::-1][:k]
-        return [
-            (positive_names[i], float(positive_vals[i]))
-            for i in sorted_idx
-        ]
+        return [(positive_names[i], float(positive_vals[i])) for i in sorted_idx]
 
     def protective_factors(self, k: int = 5) -> List[Tuple[str, float]]:
         """Return the top-k features that *decrease* churn risk (negative SHAP).
@@ -118,16 +116,15 @@ class CustomerExplanation:
         """
         negative_mask = self.shap_values < 0
         negative_vals = self.shap_values[negative_mask]
-        negative_names = [self.feature_names[i] for i in range(len(self.feature_names)) if negative_mask[i]]
+        negative_names = [
+            self.feature_names[i] for i in range(len(self.feature_names)) if negative_mask[i]
+        ]
 
         if len(negative_vals) == 0:
             return []
 
         sorted_idx = np.argsort(negative_vals)[:k]
-        return [
-            (negative_names[i], float(negative_vals[i]))
-            for i in sorted_idx
-        ]
+        return [(negative_names[i], float(negative_vals[i])) for i in sorted_idx]
 
     def summary(self) -> str:
         """Human-readable explanation summary."""
@@ -177,18 +174,17 @@ class GlobalExplanation:
         list of (feature_name, mean_abs_shap) tuples.
         """
         sorted_idx = np.argsort(self.mean_abs_shap)[::-1][:k]
-        return [
-            (self.feature_names[i], float(self.mean_abs_shap[i]))
-            for i in sorted_idx
-        ]
+        return [(self.feature_names[i], float(self.mean_abs_shap[i])) for i in sorted_idx]
 
     def to_dataframe(self) -> pd.DataFrame:
         """Convert global explanation to a DataFrame."""
         sorted_idx = np.argsort(self.mean_abs_shap)[::-1]
-        return pd.DataFrame({
-            "feature": [self.feature_names[i] for i in sorted_idx],
-            "importance": [float(self.mean_abs_shap[i]) for i in sorted_idx],
-        })
+        return pd.DataFrame(
+            {
+                "feature": [self.feature_names[i] for i in sorted_idx],
+                "importance": [float(self.mean_abs_shap[i]) for i in sorted_idx],
+            }
+        )
 
     def summary(self, k: int = 10) -> str:
         """Human-readable summary of global feature importance."""
@@ -203,6 +199,7 @@ class GlobalExplanation:
 # ---------------------------------------------------------------------------
 # ChurnExplainer
 # ---------------------------------------------------------------------------
+
 
 class ChurnExplainer:
     """SHAP-based explainer for churn prediction models.
@@ -244,7 +241,7 @@ class ChurnExplainer:
         X: pd.DataFrame,
         model: Any = None,
         feature_names: Optional[List[str]] = None,
-    ) -> "ChurnExplainer":
+    ) -> ChurnExplainer:
         """Fit the explainer on training data.
 
         Parameters
@@ -294,15 +291,11 @@ class ChurnExplainer:
             if any(t in model_type for t in tree_models):
                 self._explainer = shap.TreeExplainer(self.model)
             else:
-                self._explainer = shap.KernelExplainer(
-                    self.model.predict_proba, bg
-                )
+                self._explainer = shap.KernelExplainer(self.model.predict_proba, bg)
         elif self.explainer_type == "tree":
             self._explainer = shap.TreeExplainer(self.model)
         else:
-            self._explainer = shap.KernelExplainer(
-                self.model.predict_proba, bg
-            )
+            self._explainer = shap.KernelExplainer(self.model.predict_proba, bg)
 
         self._is_fitted = True
         logger.info("ChurnExplainer fitted with %s", type(self._explainer).__name__)
@@ -393,14 +386,16 @@ class ChurnExplainer:
             customer_index=customer_index,
             base_value=base_value,
             shap_values=sv_row,
-            feature_names=self._feature_names[:len(sv_row)],
+            feature_names=self._feature_names[: len(sv_row)],
             predicted_probability=proba,
         )
 
     def _compute_shap_values(self, X: Any) -> Any:
         """Compute SHAP values using the fitted explainer."""
         # Subsample for KernelExplainer (can be slow on large datasets)
-        if hasattr(self._explainer, "expected_value") and not hasattr(self._explainer, "tree_limit"):
+        if hasattr(self._explainer, "expected_value") and not hasattr(
+            self._explainer, "tree_limit"
+        ):
             # KernelExplainer — limit to 200 samples for speed
             if hasattr(X, "iloc") and len(X) > 200:
                 X_sample = X.iloc[:200]

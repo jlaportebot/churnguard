@@ -42,6 +42,7 @@ def __getattr__(name: str):
     }
     if name in _lazy:
         import importlib
+
         mod = importlib.import_module(_lazy[name])
         return getattr(mod, name)
     raise AttributeError(f"module 'churnguard' has no attribute {name!r}")

@@ -5,23 +5,21 @@ from __future__ import annotations
 import json
 import logging
 import sys
-import time
-from pathlib import Path
 from typing import Optional
 
 import click
 import pandas as pd
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
 
 from churnguard import __version__
 from churnguard.data import DataLoader, generate_sample_data
+from churnguard.evaluation import ModelEvaluator, format_results_table
 from churnguard.features import FeatureEngineer
 from churnguard.models import ModelRegistry
-from churnguard.evaluation import ModelEvaluator, format_results_table
-from churnguard.utils import setup_logging, get_config, ensure_dir
+from churnguard.utils import ensure_dir, get_config, setup_logging
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -35,7 +33,9 @@ def _version_option(ctx: click.Context, param: click.Parameter, value: bool) -> 
 
 
 @click.group()
-@click.option("--version", is_flag=True, callback=_version_option, is_eager=True, help="Show version.")
+@click.option(
+    "--version", is_flag=True, callback=_version_option, is_eager=True, help="Show version."
+)
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging.")
 @click.option("--config", "-c", type=click.Path(), help="Path to YAML config file.")
 @click.pass_context
@@ -55,7 +55,12 @@ def main(ctx: click.Context, version: bool, verbose: bool, config: Optional[str]
 @click.argument("data_path", type=click.Path(exists=True))
 @click.option("--target", "-t", help="Target column name (auto-detected if not specified).")
 @click.option("--output", "-o", type=click.Path(), help="Output directory for results.")
-@click.option("--models", "-m", multiple=True, help="Models to train (logistic, random_forest, gradient_boosting).")
+@click.option(
+    "--models",
+    "-m",
+    multiple=True,
+    help="Models to train (logistic, random_forest, gradient_boosting).",
+)
 @click.option("--tune", is_flag=True, help="Enable hyperparameter tuning.")
 @click.option("--no-plots", is_flag=True, help="Skip plot generation.")
 @click.option("--cv-folds", type=int, default=5, help="Number of CV folds.")
@@ -79,22 +84,35 @@ def analyze(
     config = ctx.obj["config"]
     output_dir = ensure_dir(output) if output else ensure_dir("./churnguard_output")
 
-    console.print(Panel(f"[bold blue]ChurnGuard v{__version__}[/bold blue]", title="Churn Prediction"))
+    console.print(
+        Panel(f"[bold blue]ChurnGuard v{__version__}[/bold blue]", title="Churn Prediction")
+    )
 
     # Load data
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+    ) as progress:
         task = progress.add_task("Loading data...", total=None)
         loader = DataLoader(data_path, target_column=target, random_state=seed)
         X_train, X_test, y_train, y_test = loader.split()
-        progress.update(task, description=f"Loaded {len(X_train) + len(X_test)} rows, target: '{loader.target_name}'")
+        progress.update(
+            task,
+            description=f"Loaded {len(X_train) + len(X_test)} rows, target: '{loader.target_name}'",
+        )
 
-    console.print(f"  Dataset: [green]{len(X_train) + len(X_test)}[/green] rows, [green]{len(X_train.columns)}[/green] features")
-    console.print(f"  Target:  [green]{loader.target_name}[/green] (churn rate: {y_train.mean():.1%})")
+    console.print(
+        f"  Dataset: [green]{len(X_train) + len(X_test)}[/green] rows, [green]{len(X_train.columns)}[/green] features"
+    )
+    console.print(
+        f"  Target:  [green]{loader.target_name}[/green] (churn rate: {y_train.mean():.1%})"
+    )
     console.print(f"  Split:   {len(X_train)} train / {len(X_test)} test")
 
     # Feature engineering
     feat_config = config.get("features", {})
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+    ) as progress:
         task = progress.add_task("Engineering features...", total=None)
         engineer = FeatureEngineer(
             numeric_impute_strategy=feat_config.get("numeric_impute_strategy", "median"),
@@ -104,7 +122,9 @@ def analyze(
         )
         X_train_tf = engineer.fit_transform(X_train)
         X_test_tf = engineer.transform(X_test)
-        progress.update(task, description=f"Features: {X_train_tf.shape[1]} columns after engineering")
+        progress.update(
+            task, description=f"Features: {X_train_tf.shape[1]} columns after engineering"
+        )
 
     console.print(f"  Engineered features: [green]{X_train_tf.shape[1]}[/green]")
 
@@ -137,7 +157,9 @@ def analyze(
                     feature_names=list(X_train_tf.columns),
                 )
                 results[model_name] = result
-                progress.update(task, description=f"[green]✓[/green] {model_name}: F1={result.f1:.4f}")
+                progress.update(
+                    task, description=f"[green]✓[/green] {model_name}: F1={result.f1:.4f}"
+                )
             except Exception as e:
                 progress.update(task, description=f"[red]✗[/red] {model_name}: {e}")
                 logger.error("Failed to train %s: %s", model_name, e)
@@ -151,8 +173,12 @@ def analyze(
     console.print(f"\n{table}")
 
     # Best model
-    best = registry.get_best(results, metric=config.get("evaluation", {}).get("primary_metric", "f1"))
-    console.print(f"\n  [bold green]Best model: {best.model_name}[/bold green] (F1={best.f1:.4f}, AUC={best.roc_auc:.4f})")
+    best = registry.get_best(
+        results, metric=config.get("evaluation", {}).get("primary_metric", "f1")
+    )
+    console.print(
+        f"\n  [bold green]Best model: {best.model_name}[/bold green] (F1={best.f1:.4f}, AUC={best.roc_auc:.4f})"
+    )
 
     # Save evaluation outputs
     evaluator = ModelEvaluator(
@@ -199,7 +225,9 @@ def compare(
     X_test_tf = engineer.transform(X_test)
 
     registry = ModelRegistry(random_state=seed, cv_folds=cv_folds)
-    results = registry.compare_all(X_train_tf, X_test_tf, y_train, y_test, feature_names=list(X_train_tf.columns))
+    results = registry.compare_all(
+        X_train_tf, X_test_tf, y_train, y_test, feature_names=list(X_train_tf.columns)
+    )
 
     # Rich comparison table
     table = Table(title="Model Comparison")
@@ -251,9 +279,17 @@ def sample(output: str, rows: int, churn_rate: float, seed: int) -> None:
 
 @main.command()
 @click.argument("data_path", type=click.Path(exists=True))
-@click.option("--model", "-m", type=click.Path(exists=True), required=True, help="Path to saved model (.joblib).")
+@click.option(
+    "--model",
+    "-m",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to saved model (.joblib).",
+)
 @click.option("--output", "-o", type=click.Path(), help="Output CSV path for predictions.")
-@click.option("--threshold", type=float, default=0.5, help="Probability threshold for churn classification.")
+@click.option(
+    "--threshold", type=float, default=0.5, help="Probability threshold for churn classification."
+)
 def score(data_path: str, model: str, output: Optional[str], threshold: float) -> None:
     """Score new customer data using a trained model.
 
@@ -281,13 +317,19 @@ def score(data_path: str, model: str, output: Optional[str], threshold: float) -
         result_df["churn_probability"] = proba
 
     n_churn = predictions.sum()
-    console.print(f"  Predicted [red]{n_churn}[/red] churners out of [green]{len(df)}[/green] customers ({n_churn/len(df):.1%})")
+    console.print(
+        f"  Predicted [red]{n_churn}[/red] churners out of [green]{len(df)}[/green] customers ({n_churn / len(df):.1%})"
+    )
 
     if output:
         result_df.to_csv(output, index=False)
         console.print(f"  Saved to [blue]{output}[/blue]")
     else:
-        console.print(result_df[["churn_prediction"] + (["churn_probability"] if proba is not None else [])].to_string())
+        console.print(
+            result_df[
+                ["churn_prediction"] + (["churn_probability"] if proba is not None else [])
+            ].to_string()
+        )
 
 
 @main.command()
@@ -543,9 +585,16 @@ if __name__ == "__main__":
 @click.option("--output", "-o", type=click.Path(), help="Output directory.")
 @click.option("--models", "-m", multiple=True, help="Models to train.")
 @click.option("--optimize-threshold", is_flag=True, help="Optimize decision threshold.")
-@click.option("--cost-ratio", type=float, default=5.0, help="Cost of FN / cost of FP for threshold optimization.")
+@click.option(
+    "--cost-ratio",
+    type=float,
+    default=5.0,
+    help="Cost of FN / cost of FP for threshold optimization.",
+)
 @click.option("--explain", is_flag=True, help="Generate SHAP explanations.")
-@click.option("--revenue", type=float, default=100.0, help="Revenue per customer for business impact.")
+@click.option(
+    "--revenue", type=float, default=100.0, help="Revenue per customer for business impact."
+)
 @click.option("--intervention-cost", type=float, default=10.0, help="Cost per intervention.")
 @click.option("--success-rate", type=float, default=0.3, help="Intervention success rate.")
 @click.option("--seed", type=int, default=42, help="Random seed.")
@@ -587,16 +636,28 @@ def pipeline(
         random_state=seed,
     )
 
-    console.print(Panel(f"[bold blue]ChurnGuard Pipeline v{__version__}[/bold blue]", title="End-to-End Churn Prediction"))
+    console.print(
+        Panel(
+            f"[bold blue]ChurnGuard Pipeline v{__version__}[/bold blue]",
+            title="End-to-End Churn Prediction",
+        )
+    )
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), TimeElapsedColumn(), console=console) as progress:
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
         task = progress.add_task("Running pipeline...", total=None)
         pipe = ChurnPipeline(config=config)
         result = pipe.run(data_path, target=target or "churn")
         progress.update(task, description="[green]Pipeline complete[/green]")
 
     # Display best model
-    console.print(f"\n  [bold green]Best model:[/bold green] {result.best_model_name} (F1={result.best_result.f1:.4f})")
+    console.print(
+        f"\n  [bold green]Best model:[/bold green] {result.best_model_name} (F1={result.best_result.f1:.4f})"
+    )
 
     # Display model comparison
     table = Table(title="Model Results")
@@ -606,19 +667,23 @@ def pipeline(
     table.add_column("Precision", justify="right")
     table.add_column("Recall", justify="right")
     for name, r in sorted(result.model_results.items(), key=lambda x: x[1].f1, reverse=True):
-        table.add_row(r.model_name, f"{r.f1:.4f}", f"{r.roc_auc:.4f}", f"{r.precision:.4f}", f"{r.recall:.4f}")
+        table.add_row(
+            r.model_name, f"{r.f1:.4f}", f"{r.roc_auc:.4f}", f"{r.precision:.4f}", f"{r.recall:.4f}"
+        )
     console.print(table)
 
     # Threshold optimization results
     if result.threshold_result:
         tr = result.threshold_result
-        console.print(f"\n  [bold yellow]Optimal threshold:[/bold yellow] {tr.optimal_threshold:.4f} (strategy: {tr.strategy})")
+        console.print(
+            f"\n  [bold yellow]Optimal threshold:[/bold yellow] {tr.optimal_threshold:.4f} (strategy: {tr.strategy})"
+        )
         console.print(f"  F1 at optimal: {tr.f1_at_threshold:.4f}")
 
     # Business impact
     if "business_impact" in result.run_info:
         bi = result.run_info["business_impact"]
-        console.print(f"\n  [bold cyan]Business Impact:[/bold cyan]")
+        console.print("\n  [bold cyan]Business Impact:[/bold cyan]")
         console.print(f"  Revenue saved: ${bi['revenue_saved']:,.0f}")
         console.print(f"  Intervention cost: ${bi['intervention_cost']:,.0f}")
         console.print(f"  Net value: ${bi['net_value']:,.0f}")
@@ -627,7 +692,7 @@ def pipeline(
     # SHAP explanation summary
     if result.global_explanation:
         top5 = list(result.global_explanation.feature_importance.items())[:5]
-        console.print(f"\n  [bold magenta]Top 5 Features (SHAP):[/bold magenta]")
+        console.print("\n  [bold magenta]Top 5 Features (SHAP):[/bold magenta]")
         for feat, imp in top5:
             console.print(f"  {feat}: {imp:.4f}")
 
@@ -638,9 +703,18 @@ def pipeline(
 @main.command()
 @click.argument("data_path", type=click.Path(exists=True))
 @click.option("--target", "-t", help="Target column name.")
-@click.option("--model", "-m", default="logistic", help="Model to train for threshold optimization.")
-@click.option("--strategy", type=click.Choice(["f1", "youden", "cost_sensitive"]), default="f1", help="Optimization strategy.")
-@click.option("--cost-ratio", type=float, default=5.0, help="Cost FN / Cost FP (for cost_sensitive strategy).")
+@click.option(
+    "--model", "-m", default="logistic", help="Model to train for threshold optimization."
+)
+@click.option(
+    "--strategy",
+    type=click.Choice(["f1", "youden", "cost_sensitive"]),
+    default="f1",
+    help="Optimization strategy.",
+)
+@click.option(
+    "--cost-ratio", type=float, default=5.0, help="Cost FN / Cost FP (for cost_sensitive strategy)."
+)
 @click.option("--output", "-o", type=click.Path(), help="Output directory for threshold report.")
 @click.option("--seed", type=int, default=42, help="Random seed.")
 @click.pass_context
@@ -658,7 +732,7 @@ def threshold(
 
     Trains a model and evaluates multiple threshold optimization strategies.
     """
-    from churnguard.threshold import ThresholdOptimizer, CostMatrix, optimize_threshold
+    from churnguard.threshold import CostMatrix, ThresholdOptimizer
 
     loader = DataLoader(data_path, target_column=target, random_state=seed)
     X_train, X_test, y_train, y_test = loader.split()
@@ -687,7 +761,12 @@ def threshold(
 
     for strat in strategies:
         if strat == "cost_sensitive":
-            result = optimizer.optimize(y_test, y_proba, strategy=strat, cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0))
+            result = optimizer.optimize(
+                y_test,
+                y_proba,
+                strategy=strat,
+                cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0),
+            )
         else:
             result = optimizer.optimize(y_test, y_proba, strategy=strat)
         table.add_row(
@@ -705,7 +784,12 @@ def threshold(
         report = {"model": model, "strategies": {}}
         for strat in strategies:
             if strat == "cost_sensitive":
-                result = optimizer.optimize(y_test, y_proba, strategy=strat, cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0))
+                result = optimizer.optimize(
+                    y_test,
+                    y_proba,
+                    strategy=strat,
+                    cost_matrix=CostMatrix(cost_fn=cost_ratio, cost_fp=1.0),
+                )
             else:
                 result = optimizer.optimize(y_test, y_proba, strategy=strat)
             report["strategies"][strat] = {
@@ -763,7 +847,9 @@ def explain(
     explainer.fit(X_train_tf, feature_names=list(X_train_tf.columns))
 
     # Global explanation
-    global_exp = explainer.explain_global(X_test_tf.iloc[:100] if len(X_test_tf) > 100 else X_test_tf)
+    global_exp = explainer.explain_global(
+        X_test_tf.iloc[:100] if len(X_test_tf) > 100 else X_test_tf
+    )
 
     table = Table(title=f"Top {top_n} Features (SHAP)")
     table.add_column("Feature", style="bold")
@@ -781,7 +867,9 @@ def explain(
         cust_table.add_column("Feature", style="bold")
         cust_table.add_column("SHAP value", justify="right")
         cust_table.add_column("Direction", justify="right")
-        top_features = sorted(cust_exp.feature_contribution.items(), key=lambda x: abs(x[1]), reverse=True)[:top_n]
+        top_features = sorted(
+            cust_exp.feature_contribution.items(), key=lambda x: abs(x[1]), reverse=True
+        )[:top_n]
         for feat, val in top_features:
             direction = "[red]↑ churn[/red]" if val > 0 else "[green]↓ churn[/green]"
             cust_table.add_row(feat, f"{val:+.4f}", direction)

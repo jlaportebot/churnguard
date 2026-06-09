@@ -11,15 +11,15 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_recall_curve,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    average_precision_score,
-    confusion_matrix,
-    classification_report,
     roc_curve,
-    precision_recall_curve,
 )
 
 from churnguard.models.base import ModelResult
@@ -116,7 +116,9 @@ class ModelEvaluator:
 
         # Save JSON
         if self.output_dir and self.save_json:
-            json_path = self.output_dir / f"{model_result.model_name.replace(' ', '_').lower()}_report.json"
+            json_path = (
+                self.output_dir / f"{model_result.model_name.replace(' ', '_').lower()}_report.json"
+            )
             with open(json_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
             logger.info("Saved evaluation report to %s", json_path)
@@ -169,6 +171,7 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
             import seaborn as sns
@@ -190,7 +193,9 @@ class ModelEvaluator:
         ax.set_xlabel("Predicted")
         ax.set_title(f"Confusion Matrix — {result.model_name}")
 
-        path = self.output_dir / f"cm_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        path = (
+            self.output_dir / f"cm_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        )
         fig.savefig(path, dpi=self.dpi, bbox_inches="tight")
         plt.close(fig)
         return path
@@ -201,6 +206,7 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
@@ -217,7 +223,10 @@ class ModelEvaluator:
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-        path = self.output_dir / f"roc_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        path = (
+            self.output_dir
+            / f"roc_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        )
         fig.savefig(path, dpi=self.dpi, bbox_inches="tight")
         plt.close(fig)
         return path
@@ -228,6 +237,7 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
@@ -243,7 +253,9 @@ class ModelEvaluator:
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-        path = self.output_dir / f"pr_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        path = (
+            self.output_dir / f"pr_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        )
         fig.savefig(path, dpi=self.dpi, bbox_inches="tight")
         plt.close(fig)
         return path
@@ -254,14 +266,15 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
             return None
 
-        sorted_feats = sorted(
-            result.feature_importance.items(), key=lambda x: x[1], reverse=True
-        )[:15]
+        sorted_feats = sorted(result.feature_importance.items(), key=lambda x: x[1], reverse=True)[
+            :15
+        ]
         names, values = zip(*sorted_feats) if sorted_feats else ([], [])
 
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -272,7 +285,10 @@ class ModelEvaluator:
         ax.set_title(f"Top Features — {result.model_name}")
         ax.invert_yaxis()
 
-        path = self.output_dir / f"importance_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        path = (
+            self.output_dir
+            / f"importance_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        )
         fig.savefig(path, dpi=self.dpi, bbox_inches="tight")
         plt.close(fig)
         return path
@@ -283,6 +299,7 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
@@ -296,7 +313,10 @@ class ModelEvaluator:
         ax.set_title(f"Churn Risk Distribution — {result.model_name}")
         ax.legend()
 
-        path = self.output_dir / f"risk_dist_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        path = (
+            self.output_dir
+            / f"risk_dist_{result.model_name.replace(' ', '_').lower()}.{self.plot_format}"
+        )
         fig.savefig(path, dpi=self.dpi, bbox_inches="tight")
         plt.close(fig)
         return path
@@ -307,6 +327,7 @@ class ModelEvaluator:
             return None
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -50,9 +49,7 @@ class TestModelEvaluator:
 
     def test_evaluate_model_saves_json(self, sample_result, y_test, tmp_path):
         """Test that evaluate_model saves JSON report."""
-        evaluator = ModelEvaluator(
-            output_dir=tmp_path, save_plots=False, save_json=True
-        )
+        evaluator = ModelEvaluator(output_dir=tmp_path, save_plots=False, save_json=True)
         evaluator.evaluate_model(sample_result, y_test)
         json_files = list(tmp_path.glob("*.json"))
         assert len(json_files) == 1

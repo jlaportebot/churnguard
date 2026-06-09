@@ -109,7 +109,7 @@ class DataLoader:
         logger.info("Loaded %d rows and %d columns from %s", len(df), len(df.columns), self.source)
         return df
 
-    def validate(self) -> "DataLoader":
+    def validate(self) -> DataLoader:
         """Validate the loaded data.
 
         Returns
@@ -235,9 +235,7 @@ class DataLoader:
             if len(unique_vals) == 2:
                 label_map = {unique_vals[0]: 0, unique_vals[1]: 1}
                 y = y.map(label_map).astype(int)
-                logger.info(
-                    "Encoded target: %s → 0, %s → 1", unique_vals[0], unique_vals[1]
-                )
+                logger.info("Encoded target: %s → 0, %s → 1", unique_vals[0], unique_vals[1])
             else:
                 raise DataValidationError(
                     f"Non-numeric target with {len(unique_vals)} unique values "
@@ -369,9 +367,7 @@ def generate_sample_data(
 
     # Adjust to match desired churn rate
     current_rate = 1 / (1 + np.exp(-log_odds)).mean()
-    adjustment = np.log(churn_rate / (1 - churn_rate)) - np.log(
-        current_rate / (1 - current_rate)
-    )
+    adjustment = np.log(churn_rate / (1 - churn_rate)) - np.log(current_rate / (1 - current_rate))
     log_odds += adjustment
 
     churn_prob = 1 / (1 + np.exp(-log_odds))

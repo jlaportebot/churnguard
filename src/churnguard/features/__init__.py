@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +177,7 @@ class FeatureEngineer:
             verbose_feature_names_out=False,
         )
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "FeatureEngineer":
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> FeatureEngineer:
         """Fit the feature engineering pipeline.
 
         Parameters
@@ -344,7 +344,7 @@ class FeatureSelector:
         self.max_features = max_features
         self._selected_features: list[str] = []
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "FeatureSelector":
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> FeatureSelector:
         """Fit the selector to determine which features to keep."""
         if self.method == "variance":
             variances = X.var()
@@ -353,9 +353,7 @@ class FeatureSelector:
         elif self.method == "correlation" and y is not None:
             correlations = X.corrwith(y).abs()
             correlations = correlations.sort_values(ascending=False)
-            self._selected_features = correlations[
-                correlations > self.threshold
-            ].index.tolist()
+            self._selected_features = correlations[correlations > self.threshold].index.tolist()
 
         elif self.method == "model":
             # Model-based selection requires y
@@ -367,9 +365,7 @@ class FeatureSelector:
             rf.fit(X, y)
             importances = pd.Series(rf.feature_importances_, index=X.columns)
             importances = importances.sort_values(ascending=False)
-            self._selected_features = importances[
-                importances > self.threshold
-            ].index.tolist()
+            self._selected_features = importances[importances > self.threshold].index.tolist()
 
         else:
             self._selected_features = X.columns.tolist()
@@ -377,8 +373,12 @@ class FeatureSelector:
         if self.max_features and len(self._selected_features) > self.max_features:
             self._selected_features = self._selected_features[: self.max_features]
 
-        logger.info("Selected %d / %d features using '%s' method", 
-                    len(self._selected_features), len(X.columns), self.method)
+        logger.info(
+            "Selected %d / %d features using '%s' method",
+            len(self._selected_features),
+            len(X.columns),
+            self.method,
+        )
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:

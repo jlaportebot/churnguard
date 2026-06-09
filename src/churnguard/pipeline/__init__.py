@@ -29,8 +29,8 @@ from churnguard.models.base import ModelResult
 from churnguard.threshold import (
     CostMatrix,
     ThresholdResult,
-    optimize_threshold,
     find_threshold_for_target_rate,
+    optimize_threshold,
 )
 from churnguard.utils import ensure_dir, get_config, merge_configs
 
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineConfig:
@@ -89,6 +90,7 @@ class PipelineConfig:
 # ---------------------------------------------------------------------------
 # Pipeline result
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineResult:
@@ -197,6 +199,7 @@ class PipelineResult:
 # Business impact computation
 # ---------------------------------------------------------------------------
 
+
 def compute_business_impact(
     y_true: np.ndarray,
     y_proba: np.ndarray,
@@ -257,7 +260,11 @@ def compute_business_impact(
     baseline_revenue_lost = n_churners * revenue_per_customer
 
     # Value vs baseline
-    value_vs_baseline = (revenue_saved - total_intervention_cost) / baseline_revenue_lost * 100 if baseline_revenue_lost > 0 else 0.0
+    value_vs_baseline = (
+        (revenue_saved - total_intervention_cost) / baseline_revenue_lost * 100
+        if baseline_revenue_lost > 0
+        else 0.0
+    )
 
     return {
         "revenue_saved": round(revenue_saved, 2),
@@ -278,6 +285,7 @@ def compute_business_impact(
 # ---------------------------------------------------------------------------
 # ChurnPipeline
 # ---------------------------------------------------------------------------
+
 
 class ChurnPipeline:
     """End-to-end churn prediction pipeline.
@@ -383,7 +391,9 @@ class ChurnPipeline:
                 trained_models[model_name] = registry.get_model(model_name)
                 logger.info(
                     "Trained %s: F1=%.4f, AUC=%.4f",
-                    model_name, result.f1, result.roc_auc,
+                    model_name,
+                    result.f1,
+                    result.roc_auc,
                 )
             except Exception as e:
                 logger.error("Failed to train %s: %s", model_name, e)
@@ -424,9 +434,7 @@ class ChurnPipeline:
             )
 
         # Step 6: Business impact
-        effective_threshold = (
-            threshold_result.threshold if threshold_result else 0.5
-        )
+        effective_threshold = threshold_result.threshold if threshold_result else 0.5
         if best.y_proba is not None:
             business_impact = compute_business_impact(
                 y_test.values,
@@ -445,10 +453,16 @@ class ChurnPipeline:
             try:
                 from churnguard.explainability import ChurnExplainer
 
-                inner_model = self._best_model._model if hasattr(self._best_model, '_model') else self._best_model
+                inner_model = (
+                    self._best_model._model
+                    if hasattr(self._best_model, "_model")
+                    else self._best_model
+                )
                 explainer = ChurnExplainer(model=inner_model)
                 explainer.fit(X_train_tf, feature_names=list(X_train_tf.columns))
-                global_explanation = explainer.explain_global(X_test_tf.iloc[:100] if len(X_test_tf) > 100 else X_test_tf)
+                global_explanation = explainer.explain_global(
+                    X_test_tf.iloc[:100] if len(X_test_tf) > 100 else X_test_tf
+                )
                 logger.info("Computed SHAP explanations")
             except ImportError:
                 logger.warning("shap not installed — skipping explanations")
@@ -554,7 +568,7 @@ class ChurnPipeline:
         logger.info("Pipeline saved to %s", path)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "ChurnPipeline":
+    def load(cls, path: Union[str, Path]) -> ChurnPipeline:
         """Load a saved pipeline from disk.
 
         Parameters
@@ -580,6 +594,7 @@ class ChurnPipeline:
 # ---------------------------------------------------------------------------
 # Convenience function
 # ---------------------------------------------------------------------------
+
 
 def run_pipeline(
     data_path: str,

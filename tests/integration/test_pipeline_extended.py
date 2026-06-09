@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -60,7 +59,11 @@ class TestPipelineIntegration:
         )
         assert len(result.model_results) == 3
         # Best model should be one of the three
-        assert result.best_model_name in ["Logistic Regression", "Random Forest", "Gradient Boosting"]
+        assert result.best_model_name in [
+            "Logistic Regression",
+            "Random Forest",
+            "Gradient Boosting",
+        ]
 
     def test_pipeline_business_impact(self, sample_csv, tmp_path):
         """Verify business impact metrics are computed."""

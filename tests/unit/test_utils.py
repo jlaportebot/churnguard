@@ -8,12 +8,12 @@ import pytest
 import yaml
 
 from churnguard.utils import (
+    DEFAULT_CONFIG,
+    ensure_dir,
+    get_config,
     load_config,
     merge_configs,
-    get_config,
-    ensure_dir,
     truncate_dict,
-    DEFAULT_CONFIG,
 )
 
 

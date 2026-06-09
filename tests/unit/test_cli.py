@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from click.testing import CliRunner
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from click.testing import CliRunner
 
 from churnguard.cli import main
 from churnguard.data import generate_sample_data
@@ -54,9 +54,9 @@ class TestCLI:
     def test_sample_with_churn_rate(self, runner: CliRunner, tmp_path: Path):
         """Test sample command with custom churn rate."""
         output = str(tmp_path / "sample.csv")
-        result = runner.invoke(main, [
-            "sample", "--output", output, "--rows", "500", "--churn-rate", "0.3"
-        ])
+        result = runner.invoke(
+            main, ["sample", "--output", output, "--rows", "500", "--churn-rate", "0.3"]
+        )
         assert result.exit_code == 0
         df = pd.read_csv(output)
         assert 0.1 < df["churn"].mean() < 0.6
@@ -64,43 +64,64 @@ class TestCLI:
     def test_analyze_command(self, runner: CliRunner, sample_csv: Path, tmp_path: Path):
         """Test the analyze command."""
         output = str(tmp_path / "analysis_output")
-        result = runner.invoke(main, [
-            "analyze", str(sample_csv),
-            "--target", "churn",
-            "--output", output,
-            "--models", "logistic",
-            "--no-plots",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "analyze",
+                str(sample_csv),
+                "--target",
+                "churn",
+                "--output",
+                output,
+                "--models",
+                "logistic",
+                "--no-plots",
+            ],
+        )
         assert result.exit_code == 0
 
-    def test_analyze_with_multiple_models(self, runner: CliRunner, sample_csv: Path, tmp_path: Path):
+    def test_analyze_with_multiple_models(
+        self, runner: CliRunner, sample_csv: Path, tmp_path: Path
+    ):
         """Test analyze with multiple models."""
         output = str(tmp_path / "multi_output")
-        result = runner.invoke(main, [
-            "analyze", str(sample_csv),
-            "--target", "churn",
-            "--output", output,
-            "--models", "logistic",
-            "--models", "random_forest",
-            "--no-plots",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "analyze",
+                str(sample_csv),
+                "--target",
+                "churn",
+                "--output",
+                output,
+                "--models",
+                "logistic",
+                "--models",
+                "random_forest",
+                "--no-plots",
+            ],
+        )
         assert result.exit_code == 0
 
     def test_analyze_nonexistent_file(self, runner: CliRunner):
         """Test analyze with nonexistent file."""
-        result = runner.invoke(main, [
-            "analyze", "/nonexistent/file.csv", "--target", "churn"
-        ])
+        result = runner.invoke(main, ["analyze", "/nonexistent/file.csv", "--target", "churn"])
         assert result.exit_code != 0
 
     def test_compare_command(self, runner: CliRunner, sample_csv: Path, tmp_path: Path):
         """Test the compare command."""
         output = str(tmp_path / "compare_output")
-        result = runner.invoke(main, [
-            "compare", str(sample_csv),
-            "--target", "churn",
-            "--output", output,
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "compare",
+                str(sample_csv),
+                "--target",
+                "churn",
+                "--output",
+                output,
+            ],
+        )
         assert result.exit_code == 0
 
     def test_sample_help(self, runner: CliRunner):

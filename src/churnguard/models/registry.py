@@ -5,13 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
 from churnguard.models.base import ChurnModel, ModelResult
+from churnguard.models.gradient_boosting import GradientBoostingChurnModel
 from churnguard.models.logistic import LogisticChurnModel
 from churnguard.models.random_forest import RandomForestChurnModel
-from churnguard.models.gradient_boosting import GradientBoostingChurnModel
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +88,7 @@ class ModelRegistry:
             If the model name is not found.
         """
         if name not in self._model_instances:
-            raise KeyError(
-                f"Model '{name}' not found. Available: {self.available_models}"
-            )
+            raise KeyError(f"Model '{name}' not found. Available: {self.available_models}")
         return self._model_instances[name]
 
     def train_model(
@@ -211,9 +208,7 @@ class ModelRegistry:
                     name, X_train, X_test, y_train, y_test, feature_names=feature_names
                 )
                 results[name] = result
-                logger.info(
-                    "%s: F1=%.4f, ROC-AUC=%.4f", name, result.f1, result.roc_auc
-                )
+                logger.info("%s: F1=%.4f, ROC-AUC=%.4f", name, result.f1, result.roc_auc)
             except Exception as e:
                 logger.error("Failed to train/evaluate '%s': %s", name, e)
 
@@ -245,9 +240,7 @@ class ModelRegistry:
 
         return max(all_results.values(), key=lambda r: getattr(r, metric))
 
-    def comparison_table(
-        self, results: Optional[dict[str, ModelResult]] = None
-    ) -> pd.DataFrame:
+    def comparison_table(self, results: Optional[dict[str, ModelResult]] = None) -> pd.DataFrame:
         """Generate a comparison table of all model results.
 
         Parameters

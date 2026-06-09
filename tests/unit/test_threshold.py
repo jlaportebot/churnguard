@@ -4,23 +4,22 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
 
 from churnguard.threshold import (
     CostMatrix,
     ThresholdResult,
-    optimize_f1,
-    optimize_youden,
-    optimize_cost,
-    optimize_precision_recall,
     find_threshold_for_target_rate,
+    optimize_cost,
+    optimize_f1,
+    optimize_precision_recall,
     optimize_threshold,
+    optimize_youden,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def simple_data():
@@ -50,6 +49,7 @@ def cost_matrix():
 # ---------------------------------------------------------------------------
 # CostMatrix tests
 # ---------------------------------------------------------------------------
+
 
 class TestCostMatrix:
     def test_default_values(self):
@@ -94,6 +94,7 @@ class TestCostMatrix:
 # ThresholdResult tests
 # ---------------------------------------------------------------------------
 
+
 class TestThresholdResult:
     def test_summary_contains_threshold(self):
         result = ThresholdResult(
@@ -121,6 +122,7 @@ class TestThresholdResult:
 # ---------------------------------------------------------------------------
 # optimize_f1 tests
 # ---------------------------------------------------------------------------
+
 
 class TestOptimizeF1:
     def test_perfect_separation(self, simple_data):
@@ -158,6 +160,7 @@ class TestOptimizeF1:
 # optimize_youden tests
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeYouden:
     def test_perfect_separation(self, simple_data):
         y_true, y_proba = simple_data
@@ -177,6 +180,7 @@ class TestOptimizeYouden:
 # ---------------------------------------------------------------------------
 # optimize_cost tests
 # ---------------------------------------------------------------------------
+
 
 class TestOptimizeCost:
     def test_with_default_cost_matrix(self, noisy_data):
@@ -215,6 +219,7 @@ class TestOptimizeCost:
 # optimize_precision_recall tests
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizePrecisionRecall:
     def test_achievable_precision(self, noisy_data):
         y_true, y_proba = noisy_data
@@ -238,6 +243,7 @@ class TestOptimizePrecisionRecall:
 # ---------------------------------------------------------------------------
 # find_threshold_for_target_rate tests
 # ---------------------------------------------------------------------------
+
 
 class TestFindThresholdForTargetRate:
     def test_target_rate_20_percent(self):
@@ -263,6 +269,7 @@ class TestFindThresholdForTargetRate:
 # optimize_threshold convenience tests
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeThreshold:
     def test_f1_method(self, noisy_data):
         y_true, y_proba = noisy_data
@@ -281,7 +288,9 @@ class TestOptimizeThreshold:
 
     def test_precision_recall_method(self, noisy_data):
         y_true, y_proba = noisy_data
-        result = optimize_threshold(y_true, y_proba, method="precision_recall", target_precision=0.5)
+        result = optimize_threshold(
+            y_true, y_proba, method="precision_recall", target_precision=0.5
+        )
         assert result.method == "precision_recall"
 
     def test_unknown_method_raises(self, noisy_data):

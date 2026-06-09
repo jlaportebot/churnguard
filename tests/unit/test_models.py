@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from churnguard.data import generate_sample_data
 from churnguard.features import FeatureEngineer
 from churnguard.models import (
-    LogisticChurnModel,
-    RandomForestChurnModel,
     GradientBoostingChurnModel,
+    LogisticChurnModel,
     ModelRegistry,
+    RandomForestChurnModel,
 )
 from churnguard.models.base import ModelResult
 
@@ -22,6 +21,7 @@ def prepared_data():
     """Create and prepare a dataset for model testing."""
     df = generate_sample_data(n_rows=300, churn_rate=0.25, random_state=42)
     from churnguard.data import DataLoader
+
     loader = DataLoader.__new__(DataLoader)
     loader._df = df
     loader._target_column_resolved = "churn"
@@ -33,6 +33,7 @@ def prepared_data():
     X_tf = engineer.fit_transform(X)
 
     from sklearn.model_selection import train_test_split
+
     X_train, X_test, y_train, y_test = train_test_split(
         X_tf, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -191,32 +192,34 @@ class TestModelRegistry:
         # Use small models for speed
         registry = ModelRegistry(models=["logistic", "random_forest", "gradient_boosting"])
         # Override model params for speed
-        registry._model_instances["random_forest"] = RandomForestChurnModel(n_estimators=10, max_depth=5)
-        registry._model_instances["gradient_boosting"] = GradientBoostingChurnModel(n_estimators=10, max_depth=3)
-
-        results = registry.compare_all(
-            X_train, X_test, y_train, y_test, feature_names=feat_names
+        registry._model_instances["random_forest"] = RandomForestChurnModel(
+            n_estimators=10, max_depth=5
         )
+        registry._model_instances["gradient_boosting"] = GradientBoostingChurnModel(
+            n_estimators=10, max_depth=3
+        )
+
+        results = registry.compare_all(X_train, X_test, y_train, y_test, feature_names=feat_names)
         assert len(results) == 3
         assert all(r.f1 > 0 for r in results.values())
 
     def test_get_best(self, prepared_data):
         X_train, X_test, y_train, y_test, feat_names = prepared_data
         registry = ModelRegistry(models=["logistic", "random_forest"])
-        registry._model_instances["random_forest"] = RandomForestChurnModel(n_estimators=10, max_depth=5)
-        results = registry.compare_all(
-            X_train, X_test, y_train, y_test, feature_names=feat_names
+        registry._model_instances["random_forest"] = RandomForestChurnModel(
+            n_estimators=10, max_depth=5
         )
+        results = registry.compare_all(X_train, X_test, y_train, y_test, feature_names=feat_names)
         best = registry.get_best(results, metric="f1")
         assert best.f1 > 0
 
     def test_comparison_table(self, prepared_data):
         X_train, X_test, y_train, y_test, feat_names = prepared_data
         registry = ModelRegistry(models=["logistic", "random_forest"])
-        registry._model_instances["random_forest"] = RandomForestChurnModel(n_estimators=10, max_depth=5)
-        results = registry.compare_all(
-            X_train, X_test, y_train, y_test, feature_names=feat_names
+        registry._model_instances["random_forest"] = RandomForestChurnModel(
+            n_estimators=10, max_depth=5
         )
+        results = registry.compare_all(X_train, X_test, y_train, y_test, feature_names=feat_names)
         table = registry.comparison_table(results)
         assert isinstance(table, pd.DataFrame)
         assert len(table) == 2

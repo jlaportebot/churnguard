@@ -8,9 +8,9 @@ import pandas as pd
 import pytest
 
 from churnguard.data import DataLoader, generate_sample_data
+from churnguard.evaluation import ModelEvaluator, format_results_table
 from churnguard.features import FeatureEngineer
 from churnguard.models import ModelRegistry
-from churnguard.evaluation import ModelEvaluator, format_results_table
 
 
 class TestFullPipeline:
@@ -38,7 +38,10 @@ class TestFullPipeline:
         # Model training
         registry = ModelRegistry(models=["logistic"], random_state=42)
         results = registry.compare_all(
-            X_train_tf, X_test_tf, y_train, y_test,
+            X_train_tf,
+            X_test_tf,
+            y_train,
+            y_test,
             feature_names=list(X_train_tf.columns),
         )
 
@@ -60,7 +63,7 @@ class TestFullPipeline:
 
     def test_multi_model_comparison(self, data_path: Path, tmp_path: Path):
         """Test comparing multiple models through the full pipeline."""
-        from churnguard.models import RandomForestChurnModel, GradientBoostingChurnModel
+        from churnguard.models import GradientBoostingChurnModel, RandomForestChurnModel
 
         loader = DataLoader(str(data_path), target_column="churn")
         X_train, X_test, y_train, y_test = loader.split()
@@ -71,11 +74,18 @@ class TestFullPipeline:
 
         registry = ModelRegistry(random_state=42)
         # Use small models for speed
-        registry._model_instances["random_forest"] = RandomForestChurnModel(n_estimators=10, max_depth=5)
-        registry._model_instances["gradient_boosting"] = GradientBoostingChurnModel(n_estimators=10, max_depth=3)
+        registry._model_instances["random_forest"] = RandomForestChurnModel(
+            n_estimators=10, max_depth=5
+        )
+        registry._model_instances["gradient_boosting"] = GradientBoostingChurnModel(
+            n_estimators=10, max_depth=3
+        )
 
         results = registry.compare_all(
-            X_train_tf, X_test_tf, y_train, y_test,
+            X_train_tf,
+            X_test_tf,
+            y_train,
+            y_test,
             feature_names=list(X_train_tf.columns),
         )
 
@@ -97,9 +107,12 @@ class TestFullPipeline:
         from churnguard.utils import get_config, merge_configs
 
         config = get_config()
-        custom = merge_configs(config, {
-            "features": {"scaling": "minmax", "generate_interactions": False},
-        })
+        custom = merge_configs(
+            config,
+            {
+                "features": {"scaling": "minmax", "generate_interactions": False},
+            },
+        )
 
         loader = DataLoader(str(data_path), target_column="churn")
         X_train, X_test, y_train, y_test = loader.split()
@@ -134,9 +147,7 @@ class TestFullPipeline:
 
         # Train model on selected features
         registry = ModelRegistry(models=["logistic"])
-        result = registry.train_and_evaluate(
-            "logistic", X_train_sel, X_test_sel, y_train, y_test
-        )
+        result = registry.train_and_evaluate("logistic", X_train_sel, X_test_sel, y_train, y_test)
         assert result.f1 > 0
 
     def test_sample_data_pipeline(self, tmp_path: Path):
@@ -157,8 +168,6 @@ class TestFullPipeline:
 
         # Model
         registry = ModelRegistry(models=["logistic"])
-        result = registry.train_and_evaluate(
-            "logistic", X_train_tf, X_test_tf, y_train, y_test
-        )
+        result = registry.train_and_evaluate("logistic", X_train_tf, X_test_tf, y_train, y_test)
 
         assert result.roc_auc > 0.5  # Should be better than random

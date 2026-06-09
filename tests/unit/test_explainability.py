@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 
 from churnguard.explainability import (
     ChurnExplainer,
@@ -14,22 +14,24 @@ from churnguard.explainability import (
     GlobalExplanation,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def binary_data():
     """Simple binary classification dataset."""
     rng = np.random.RandomState(42)
     n = 200
-    X = pd.DataFrame({
-        "tenure": rng.exponential(36, n).clip(1, 120),
-        "monthly_charges": rng.normal(65, 20, n).clip(18, 150),
-        "total_charges": rng.normal(2000, 500, n).clip(0),
-        "n_services": rng.binomial(5, 0.4, n),
-    })
+    X = pd.DataFrame(
+        {
+            "tenure": rng.exponential(36, n).clip(1, 120),
+            "monthly_charges": rng.normal(65, 20, n).clip(18, 150),
+            "total_charges": rng.normal(2000, 500, n).clip(0),
+            "n_services": rng.binomial(5, 0.4, n),
+        }
+    )
     y = pd.Series(rng.binomial(1, 0.3, n), name="churn")
     return X, y
 
@@ -55,6 +57,7 @@ def fitted_rf(binary_data):
 # ---------------------------------------------------------------------------
 # CustomerExplanation tests
 # ---------------------------------------------------------------------------
+
 
 class TestCustomerExplanation:
     def test_top_features(self):
@@ -126,6 +129,7 @@ class TestCustomerExplanation:
 # GlobalExplanation tests
 # ---------------------------------------------------------------------------
 
+
 class TestGlobalExplanation:
     def test_top_features(self):
         ge = GlobalExplanation(
@@ -166,6 +170,7 @@ class TestGlobalExplanation:
 # ---------------------------------------------------------------------------
 # ChurnExplainer tests (with shap)
 # ---------------------------------------------------------------------------
+
 
 class TestChurnExplainerKernel:
     """Test ChurnExplainer with KernelExplainer (logistic regression)."""

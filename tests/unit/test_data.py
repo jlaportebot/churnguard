@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -26,11 +25,13 @@ class TestDataLoader:
     @pytest.fixture
     def minimal_csv(self, tmp_path: Path) -> Path:
         """Create a minimal valid CSV."""
-        df = pd.DataFrame({
-            "feature_a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "feature_b": ["x", "y", "x", "y", "x", "y", "x", "y", "x", "y"],
-            "churn": [0, 1, 0, 1, 0, 0, 1, 0, 1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "feature_b": ["x", "y", "x", "y", "x", "y", "x", "y", "x", "y"],
+                "churn": [0, 1, 0, 1, 0, 0, 1, 0, 1, 0],
+            }
+        )
         path = tmp_path / "minimal.csv"
         df.to_csv(path, index=False)
         return path
@@ -94,10 +95,12 @@ class TestDataLoader:
     def test_single_class_target(self, tmp_path: Path):
         """Test that single-class target raises DataValidationError."""
         path = tmp_path / "single_class.csv"
-        df = pd.DataFrame({
-            "feature": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "churn": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "churn": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            }
+        )
         df.to_csv(path, index=False)
         loader = DataLoader(path, target_column="churn")
         with pytest.raises(DataValidationError, match="unique value"):
@@ -106,10 +109,12 @@ class TestDataLoader:
     def test_string_target_encoding(self, tmp_path: Path):
         """Test that string targets are auto-encoded."""
         path = tmp_path / "string_target.csv"
-        df = pd.DataFrame({
-            "feature": np.random.randn(20),
-            "churn": ["no", "yes"] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "feature": np.random.randn(20),
+                "churn": ["no", "yes"] * 10,
+            }
+        )
         df.to_csv(path, index=False)
         loader = DataLoader(path, target_column="churn")
         X, y = loader.get_features_and_target()
@@ -137,10 +142,12 @@ class TestDataLoader:
     def test_drop_na_target(self, tmp_path: Path):
         """Test dropping rows with missing target."""
         path = tmp_path / "with_na.csv"
-        df = pd.DataFrame({
-            "feature": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "churn": [0, 1, np.nan, 0, 1, np.nan, 0, 1, 0, 1],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "churn": [0, 1, np.nan, 0, 1, np.nan, 0, 1, 0, 1],
+            }
+        )
         df.to_csv(path, index=False)
         loader = DataLoader(path, target_column="churn", drop_na_target=True)
         loader.validate()

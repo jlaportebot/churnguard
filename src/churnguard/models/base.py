@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +79,7 @@ class ModelResult:
         ]
         if self.cv_scores:
             lines.append(
-                f"  CV mean:   {np.mean(self.cv_scores):.4f} "
-                f"(±{np.std(self.cv_scores):.4f})"
+                f"  CV mean:   {np.mean(self.cv_scores):.4f} (±{np.std(self.cv_scores):.4f})"
             )
         return "\n".join(lines)
 
@@ -155,7 +154,7 @@ class ChurnModel(ABC):
     def _create_model(self, **params) -> BaseEstimator:
         """Create the underlying sklearn model with given parameters."""
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "ChurnModel":
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> ChurnModel:
         """Fit the model to training data.
 
         Parameters
@@ -264,16 +263,17 @@ class ChurnModel(ABC):
         ModelResult
             Evaluation results.
         """
+        import time
+
         from sklearn.metrics import (
             accuracy_score,
-            precision_score,
-            recall_score,
-            f1_score,
-            roc_auc_score,
             average_precision_score,
             confusion_matrix,
+            f1_score,
+            precision_score,
+            recall_score,
+            roc_auc_score,
         )
-        import time
 
         if not self._is_fitted:
             raise RuntimeError(f"{self.name} must be fitted before evaluate.")
@@ -300,13 +300,13 @@ class ChurnModel(ABC):
         result.feature_importance = self._get_feature_importance(feature_names)
 
         # Cross-validation scores
-        result.cv_scores = self._compute_cv_scores(
-            X_test, y_test
-        )
+        result.cv_scores = self._compute_cv_scores(X_test, y_test)
 
         return result
 
-    def _get_feature_importance(self, feature_names: Optional[list[str]] = None) -> dict[str, float]:
+    def _get_feature_importance(
+        self, feature_names: Optional[list[str]] = None
+    ) -> dict[str, float]:
         """Extract feature importance from the fitted model."""
         importances = None
 

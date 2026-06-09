@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
-from sklearn.linear_model import LogisticRegression
 
 from churnguard.data import generate_sample_data
 from churnguard.pipeline import (
@@ -21,10 +17,10 @@ from churnguard.pipeline import (
 )
 from churnguard.threshold import CostMatrix
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_csv(tmp_path):
@@ -44,6 +40,7 @@ def sample_data():
 # ---------------------------------------------------------------------------
 # PipelineConfig tests
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineConfig:
     def test_defaults(self):
@@ -78,13 +75,17 @@ class TestPipelineConfig:
 # compute_business_impact tests
 # ---------------------------------------------------------------------------
 
+
 class TestComputeBusinessImpact:
     def test_perfect_model(self):
         y_true = np.array([0, 0, 0, 1, 1, 1])
         y_proba = np.array([0.1, 0.1, 0.1, 0.9, 0.9, 0.9])
         impact = compute_business_impact(
-            y_true, y_proba, threshold=0.5,
-            revenue_per_customer=100, intervention_cost=10,
+            y_true,
+            y_proba,
+            threshold=0.5,
+            revenue_per_customer=100,
+            intervention_cost=10,
             intervention_success_rate=0.3,
         )
         assert impact["true_positives"] == 3
@@ -98,8 +99,11 @@ class TestComputeBusinessImpact:
         y_true = np.array([0, 0, 1, 1])
         y_proba = np.array([0.6, 0.7, 0.8, 0.9])
         impact = compute_business_impact(
-            y_true, y_proba, threshold=0.5,
-            revenue_per_customer=100, intervention_cost=10,
+            y_true,
+            y_proba,
+            threshold=0.5,
+            revenue_per_customer=100,
+            intervention_cost=10,
         )
         assert impact["n_flagged"] == 4
         assert impact["false_positives"] == 2
@@ -108,7 +112,9 @@ class TestComputeBusinessImpact:
         y_true = np.array([0, 0, 1, 1])
         y_proba = np.array([0.1, 0.2, 0.3, 0.4])
         impact = compute_business_impact(
-            y_true, y_proba, threshold=0.8,
+            y_true,
+            y_proba,
+            threshold=0.8,
         )
         assert impact["n_flagged"] == 0
         assert impact["false_negatives"] == 2
@@ -125,6 +131,7 @@ class TestComputeBusinessImpact:
 # PipelineResult tests
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineResult:
     def test_summary_with_no_results(self):
         result = PipelineResult()
@@ -133,6 +140,7 @@ class TestPipelineResult:
 
     def test_save_report(self, tmp_path):
         from churnguard.models.base import ModelResult
+
         result = PipelineResult(
             model_results={
                 "logistic": ModelResult(model_name="logistic", f1=0.8, roc_auc=0.9),
@@ -153,6 +161,7 @@ class TestPipelineResult:
 # ---------------------------------------------------------------------------
 # ChurnPipeline integration tests
 # ---------------------------------------------------------------------------
+
 
 class TestChurnPipeline:
     def test_run_with_logistic(self, sample_csv, tmp_path):
@@ -264,6 +273,7 @@ class TestChurnPipeline:
 # ---------------------------------------------------------------------------
 # run_pipeline convenience function tests
 # ---------------------------------------------------------------------------
+
 
 class TestRunPipeline:
     def test_convenience_function(self, sample_csv, tmp_path):
