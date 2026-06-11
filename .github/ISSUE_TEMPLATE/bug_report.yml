@@ -1,0 +1,89 @@
+name: Bug Report
+about: Something isn't working
+title: "[BUG] "
+labels: ["bug"]
+assignees: ""
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for the bug report! Please fill out what you can."
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What Happened
+      description: Clear description of the bug.
+      placeholder: "churnguard analyze crashes with KeyError when target column has spaces..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to trigger it.
+      placeholder: |
+        1. Create CSV with column "churn rate"
+        2. Run `churnguard analyze data.csv --target "churn rate"`
+        3. Observe KeyError
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: "Should handle column names with spaces"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: Error traceback, logs, output.
+      placeholder: |
+        Traceback (most recent call last):
+          File ".../cli.py", line 42, in analyze
+            df[target]
+        KeyError: 'churn rate'
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ChurnGuard Version
+      description: Run `churnguard --version` or `pip show churnguard`
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      placeholder: "3.11.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install Method
+      options:
+        - pip install churnguard
+        - pip install churnguard[viz]
+        - pip install -e . (editable)
+        - Docker / other
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Sample data (anonymized), config file, anything else relevant.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I searched existing issues (open + closed)
+          required: true
+        - label: I'm on the latest release
+          required: true
+        - label: This isn't a usage question (use Discussions instead)
+          required: true

@@ -1,5 +1,12 @@
 # ChurnGuard
 
+[![CI](https://github.com/jlaportebot/churnguard/actions/workflows/ci.yml/badge.svg)](https://github.com/jlaportebot/churnguard/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/churnguard.svg)](https://pypi.org/project/churnguard/)
+[![Python versions](https://img.shields.io/pypi/pyversions/churnguard.svg)](https://pypi.org/project/churnguard/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
 Customer churn prediction CLI and library with ML model comparison, threshold optimization, and SHAP explainability.
 
 ## Features
@@ -144,6 +151,42 @@ evaluation:
   random_state: 42
 ```
 
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick start for contributors:**
+
+```bash
+git clone https://github.com/jlaportebot/churnguard.git
+cd churnguard
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev,viz]"
+
+# Run tests
+pytest -v
+
+# Lint & format
+ruff check .
+ruff format --check .
+
+# Type check
+mypy src/
+```
+
+**Good first issues:** Look for the [`good first issue` label](https://github.com/jlaportebot/churnguard/issues?q=label%3A%22good+first+issue%22) — we'll mentor you through it.
+
+**Questions?** Open a [Discussion](https://github.com/jlaportebot/churnguard/discussions) or [issue](https://github.com/jlaportebot/churnguard/issues/new/choose).
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+
+## Code of Conduct
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). We follow the Contributor Covenant.

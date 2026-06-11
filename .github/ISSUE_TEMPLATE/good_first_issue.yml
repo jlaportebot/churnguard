@@ -1,0 +1,86 @@
+name: Good First Issue
+about: A curated task for new contributors
+title: "[GOOD FIRST ISSUE] "
+labels: ["good first issue", "help wanted"]
+assignees: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Welcome!** This issue is designed for first-time contributors. A maintainer will guide you — just ask questions.
+
+        **Mentor:** @maintainer (will be assigned)
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task Summary
+      description: One-sentence description.
+      placeholder: "Add `--export-csv` flag to `churnguard compare` to save model comparison table"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What Needs Doing
+      description: Step-by-step breakdown.
+      placeholder: |
+        1. Open `src/churnguard/cli.py`, find `compare` command
+        2. Add `--export-csv` / `-o` option with click
+        3. In the command function, if export path given, write comparison DataFrame to CSV
+        4. Add test in `tests/test_cli.py`
+        5. Update README with new flag example
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to Touch
+      description: Exact paths.
+      placeholder: |
+        - `src/churnguard/cli.py` (main)
+        - `tests/test_cli.py` (test)
+        - `README.md` (docs)
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How we'll know it's done.
+      placeholder: |
+        - [ ] `--export-csv` flag works and writes valid CSV
+        - [ ] Test passes
+        - [ ] README updated
+        - [ ] `ruff check .` and `ruff format --check .` pass
+        - [ ] `pytest -v` passes
+    validations:
+      required: true
+  - type: textarea
+    id: pointers
+    attributes:
+      label: Helpful Pointers
+      placeholder: |
+        - See `analyze` command in cli.py for similar export pattern
+        - Click docs: https://click.palletsprojects.com/
+        - Run `churnguard compare --help` to see current flags
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Estimated Difficulty
+      options:
+        - Very easy (30-60 min) — docs, CLI flags, simple tests
+        - Easy (1-2 hours) — small code change, well-isolated
+        - Moderate (half day) — requires understanding a component
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: For the Contributor
+      options:
+        - label: I've read CONTRIBUTING.md
+          required: true
+        - label: I'll ask questions if stuck
+          required: true
+        - label: I'll submit a PR when ready
+          required: true
